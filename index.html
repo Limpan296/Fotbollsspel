@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Fotbollsspel: Femmanalaget och Tre klubbar. Poäng för varje klubb spelarna har spelat i.">
+<meta name="description" content="Fotbollsspel: Femmanalaget, Tre klubbar och Vem är jag?. Poäng för varje klubb spelarna har spelat i.">
 <title>Fotbollsspelen</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap">
 <style>
@@ -137,6 +137,16 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .tag { font-size: .75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .tag.ok { color: var(--accent); border-color: var(--accent); }
 .linkbtn { color: var(--muted); font-size: .9rem; }
+.clue { display: grid; grid-template-columns: 3.4rem 1fr; gap: 4px 12px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.clue .cpts { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1.1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.clue .cbody { display: grid; gap: 4px; min-width: 0; }
+.clue .cbody p { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+.clue.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.clue.old .cbody p { color: var(--muted); }
+.clue.locked { border-style: dashed; background: transparent; padding: 8px 14px; align-items: center; }
+.clue.locked .cpts { font-size: 1.2rem; }
+.clue.locked .cpts { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .clue.now { animation: in .3s ease-out; } }
 .online-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .online-row a { display: inline-block; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; color: var(--fg); text-decoration: none; font-weight: 600; background: var(--card); }
 .online-row a:hover { border-color: var(--accent); }
@@ -181,6 +191,18 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       </div>
       <div class="game-meta"><span class="eyebrow">1–8 spelare · 30 sek per fråga</span><span class="game-go">Spela &rarr;</span></div>
     </a>
+    <a class="game-card" href="#online-vem-ar-jag">
+      <svg class="game-art" viewBox="0 0 360 150" role="img" aria-label="Frågetecken på en fotbollsplan" preserveAspectRatio="xMidYMid slice">
+        <rect width="360" height="150" fill="var(--pitch-a)"/>
+        <rect x="60" width="60" height="150" fill="var(--pitch-b)"/><rect x="180" width="60" height="150" fill="var(--pitch-b)"/><rect x="300" width="60" height="150" fill="var(--pitch-b)"/>
+        <text x="180" y="112" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="700" font-size="120" fill="#ffffff" fill-opacity=".92">?</text>
+      </svg>
+      <div>
+        <h2>Vem är jag?</h2>
+        <p>Gissa vilken fotbollsspelare det är utifrån fem ledtrådar. Ju tidigare du svarar rätt, desto fler poäng.</p>
+      </div>
+      <div class="game-meta"><span class="eyebrow">2–8 spelare online · 5 ledtrådar</span><span class="game-go">Spela &rarr;</span></div>
+    </a>
     <div class="game-card soon">
       <h2>Fler spel kommer</h2>
     </div>
@@ -189,6 +211,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     <span class="eyebrow">Spela online, varsin enhet</span>
     <a href="#online-femmanalaget">Femmanalaget online</a>
     <a href="#online-tre-klubbar">Tre klubbar online</a>
+    <a href="#online-vem-ar-jag">Vem är jag?</a>
   </div>
 </div>
 
@@ -406,6 +429,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     <div id="ol-q" class="stack" hidden>
       <div class="eyebrow" id="ol-roundLabel"></div>
       <div class="t3-clubs" id="ol-clubs"></div>
+      <div class="stack" id="ol-clues" hidden></div>
       <div class="timer" id="ol-timer" role="timer" aria-live="off" aria-label="Tid kvar för frågan">
         <div class="timer-bar"><span id="ol-timerFill"></span></div>
         <span class="timer-num" id="ol-timerNum">30</span>
@@ -418,6 +442,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         </div>
       </form>
       <p class="msg" id="ol-msg" role="status"></p>
+      <p class="hint" id="ol-vcount" hidden></p>
       <div class="chips" id="ol-who"></div>
     </div>
 
@@ -1212,17 +1237,23 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   var AVAILABLE = !!(CFG.mock || (CFG.supabaseUrl && CFG.supabaseKey));
   var SUPA_SRC = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
   var MINP = 2, MAXP = 8, Q = 5, INTRO_MS = 2500, QMS = CFG.questionMs || 30000;
+  var VAJ = "vem-ar-jag", CLUE_MS = CFG.clueMs || 20000;
   var ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   var GAMES = {
     "femmanalaget": { title: "Femmanalaget online", offline: "#femmanalaget",
       lede: "Alla får samma klubb samtidigt. Skriv en spelare som har spelat i klubben och få ett poäng för varje klubb han har spelat i. Efter varje fråga ser ni allas svar. Alla klickar Redo för att gå vidare." },
     "tre-klubbar": { title: "Tre klubbar online", offline: "#tre-klubbar",
-      lede: "Alla får samma tre klubbar samtidigt. Skriv en spelare och få ett poäng för varje klubb han har spelat i. Efter varje fråga ser ni allas svar." }
+      lede: "Alla får samma tre klubbar samtidigt. Skriv en spelare och få ett poäng för varje klubb han har spelat i. Efter varje fråga ser ni allas svar." },
+    "vem-ar-jag": { title: "Vem är jag?", offline: null,
+      lede: "Läs ledtrådarna och gissa vilken fotbollsspelare det är. Rätt svar på första ledtråden ger 10 poäng, sedan 8, 6, 4 och 2. Alla ser samma ledtråd samtidigt och en ny kommer var " + Math.round(CLUE_MS / 1000) + ":e sekund. Du kan svara en gång per ledtråd." }
   };
 
   var gameKey = null, net = null, isHost = false, joined = false, S = null, cur = {}, offset = 0, presence = [];
   var mine = [], usedPrior = [], myRound = 0, answeredQ = -1, lastQ = -1, pendingAns = null, selPid = null;
   var starting = false, localReady = "", lastReadyResend = 0;
+  var vajPool = null, vajQs = [], vg = {}, vSent = null, vFb = null, lastGuessSend = 0, idIndex = null;
+  function isVaj() { return gameKey === VAJ; }
+  if (CFG.mock) window.__vajQs = function () { return vajQs; };   // bara för automatiska tester
   var hbTimer = null, hostTimer = null, tickTimer = null, hostGoneTimer = null, joinTimer = null, helloSent = false, lastResend = 0;
 
   function rnd(n) { var s = ""; for (var i = 0; i < n; i++) s += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length)); return s; }
@@ -1335,7 +1366,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
   function initHost(code) {
     isHost = true; joined = true; offset = 0; cur = {};
-    S = { game: gameKey, code: code, round: 1, phase: "lobby", players: [], qi: 0, questions: [], deadline: 0, answered: {}, hist: {}, totals: {}, ready: {}, introUntil: 0 };
+    S = { game: gameKey, code: code, round: 1, phase: "lobby", players: [], qi: 0, questions: [], deadline: 0, answered: {}, hist: {}, totals: {}, ready: {}, introUntil: 0, ci: 0, clues: [], clueEnd: 0, guessed: {}, solved: {}, reveals: [], note: "" };
     myRound = 1; mine = []; usedPrior = [];
     hbTimer = setInterval(function () { if (isHost && net) net.send({ t: "state", s: S, now: Date.now() }); }, 3000);
     hostTimer = setInterval(hostTick, 250);
@@ -1365,7 +1396,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       });
     } else {
       S.players.forEach(function (p) { p.on = p.pid === me.pid || !!by[p.pid]; });
-      if (S.phase === "q" && allAnswered()) toReveal();
+      if (S.phase === "q") { if (isVaj()) vajCheck(); else if (allAnswered()) toReveal(); }
       else maybeAdvance();
     }
     if (S.phase === "lobby") maybeAdvance();
@@ -1396,7 +1427,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   function startMatch() {
     if (starting) return;
     starting = true;
-    FS.ready.then(function () {
+    Promise.all([FS.ready, isVaj() ? loadVaj() : null]).then(function () {
       starting = false;
       if (!isHost || !S || !FS.DB || (S.phase !== "lobby" && S.phase !== "final")) return;
       if (S.phase === "final") {
@@ -1404,18 +1435,98 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         mine = []; S.round += 1; myRound = S.round;
       }
       var qs;
-      if (gameKey === "femmanalaget") qs = FS.pickN({}, [], Q).map(function (c) { return { clubs: [c] }; });
+      if (isVaj()) { vajQs = pickVaj(); qs = vajQs.map(function () { return {}; }); S.reveals = []; }
+      else if (gameKey === "femmanalaget") qs = FS.pickN({}, [], Q).map(function (c) { return { clubs: [c] }; });
       else qs = FS.makeTriples().map(function (t) { return { clubs: t }; });
       S.questions = qs; S.hist = {}; S.totals = {};
       startIntro(0);
       broadcast();
-    }, function () { starting = false; });
+    }, function () {
+      starting = false;
+      if (S) { S.note = "Kunde inte ladda spelets data. Försök igen."; S.ready = {}; broadcast(); }
+    });
+  }
+  /* ---------- Vem är jag? (värden äger svaren och bedömer gissningar) ---------- */
+  function loadVaj() {
+    if (vajPool) return Promise.resolve(vajPool);
+    return fetch("vemarjag.json").then(function (r) { if (!r.ok) throw new Error("vaj"); return r.json(); }).then(function (d) { vajPool = d.questions; return vajPool; });
+  }
+  function pickVaj() {
+    var recent = [];
+    try { recent = JSON.parse(localStorage.getItem("vem-ar-jag-recent") || "[]"); } catch (e) { recent = []; }
+    var used = {}, out = [];
+    [1, 2, 2, 3, 2].forEach(function (d) {   // blandad svårighet
+      var c = vajPool.filter(function (q) { return q.d === d && !used[q.id] && recent.indexOf(q.id) < 0; });
+      if (!c.length) c = vajPool.filter(function (q) { return q.d === d && !used[q.id]; });
+      if (!c.length) c = vajPool.filter(function (q) { return !used[q.id]; });
+      var q = c[Math.floor(Math.random() * c.length)]; used[q.id] = 1; out.push(q);
+    });
+    try { localStorage.setItem("vem-ar-jag-recent", JSON.stringify(out.map(function (q) { return q.id; }).concat(recent).slice(0, 150))); } catch (e) { /* ignore */ }
+    return out;
+  }
+  function piOf(id) {
+    if (!idIndex) { idIndex = {}; FS.DB.players.forEach(function (p, i) { idIndex[p[0]] = i; }); }
+    return idIndex[id];
+  }
+  function judge(text, ans) {
+    var qt = FS.tokens(text), qf = qt.join(" ");
+    if (!qf) return false;
+    var D = FS.DB, pi = piOf(ans.id), target = D.players[pi];
+    if (!target) return false;
+    var tt = FS.tokens(target[1]), tn = tt.join(" ");
+    if (qf === tn) return true;                          // exakt namn (även enordsnamn som "Willian")
+    if (qt.length === 1 && tt.length > 1 && qf === tt[tt.length - 1]) return true;   // enbart efternamn
+    var g = FS.bestMatch(qt, qf, FS.allIdx());           // samma tolerans som övriga spel (stavfel, efternamn, smeknamn)
+    if (g.pi >= 0) { var gp = D.players[g.pi]; if (gp[0] === ans.id || FS.tokens(gp[1]).join(" ") === tn) return true; }
+    if (qt.length >= 2) { var d = FS.bestMatch(qt, qf, [pi]); if (d.pi >= 0 && d.score >= 0.85) return true; }  // t.ex. mellannamn
+    return false;
+  }
+  function sendFb(pid, q, c, ok, pts) {
+    var m = { t: "fb", pid: pid, q: q, c: c, ok: ok, pts: pts };
+    if (pid === me.pid) onFb(m); else if (net) net.send(m);
+  }
+  function hostGuess(pid, q, c, text) {
+    if (!isHost || !S || !isVaj() || S.phase !== "q" || q !== S.qi) return;
+    if (!S.players.some(function (p) { return p.pid === pid; })) return;
+    var g = vg[pid];
+    if (g && g.ci === c) { sendFb(pid, q, c, g.ok, g.pts); return; }   // dubblett: kvittera igen
+    if (c !== S.ci || S.solved[pid] != null) return;
+    var ok = judge(String(text || "").slice(0, 60), vajQs[S.qi]);
+    var pts = ok ? 10 - 2 * c : 0;
+    vg[pid] = { ci: c, ok: ok, pts: pts };
+    S.guessed[pid] = true;
+    if (ok) S.solved[pid] = pts;
+    sendFb(pid, q, c, ok, pts);
+    vajCheck();
+    broadcast();
+  }
+  function vajCheck() {
+    if (!isHost || !S || S.phase !== "q" || !isVaj()) return;
+    var open = S.players.filter(function (p) { return p.on && S.solved[p.pid] == null; });
+    if (!open.length) finishQ();
+    else if (open.every(function (p) { return S.guessed[p.pid]; })) advanceClue();
+  }
+  function advanceClue() {
+    if (S.ci >= 4) { finishQ(); return; }
+    S.ci += 1; S.clues.push(vajQs[S.qi].clues[S.ci]); S.clueEnd = Date.now() + CLUE_MS; S.guessed = {};
+  }
+  function finishQ() {
+    var qa = vajQs[S.qi];
+    S.players.forEach(function (p) {
+      var pts = S.solved[p.pid] != null ? S.solved[p.pid] : 0;
+      (S.hist[p.pid] = S.hist[p.pid] || []).push({ pts: pts, clue: pts ? (10 - pts) / 2 : -1 });
+      S.totals[p.pid] = (S.totals[p.pid] || 0) + pts;
+    });
+    S.reveals[S.qi] = { name: qa.name, clues: qa.clues };
+    S.phase = "reveal"; S.deadline = 0; S.clueEnd = 0; S.ready = {};
   }
   function startIntro(qi) {
-    cur = {}; S.answered = {}; S.qi = qi; S.phase = "intro"; S.ready = {}; S.introUntil = Date.now() + INTRO_MS;
+    cur = {}; S.answered = {}; S.qi = qi; S.phase = "intro"; S.ready = {}; S.note = ""; S.introUntil = Date.now() + INTRO_MS;
   }
   function openQuestion() {
-    cur = {}; S.answered = {}; S.phase = "q"; S.ready = {}; S.deadline = Date.now() + QMS;
+    cur = {}; S.answered = {}; S.phase = "q"; S.ready = {};
+    if (isVaj()) { vg = {}; S.ci = 0; S.clues = [vajQs[S.qi].clues[0]]; S.clueEnd = Date.now() + CLUE_MS; S.guessed = {}; S.solved = {}; }
+    else S.deadline = Date.now() + QMS;
     broadcast();
   }
   function hostAnswer(pid, q, a) {
@@ -1445,7 +1556,10 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   }
   function hostTick() {
     if (!isHost || !S) return;
-    if (S.phase === "q" && Date.now() >= S.deadline) { toReveal(); broadcast(); }
+    if (S.phase === "q") {
+      if (isVaj()) { if (Date.now() >= S.clueEnd) { advanceClue(); broadcast(); } }
+      else if (Date.now() >= S.deadline) { toReveal(); broadcast(); }
+    }
     else if (S.phase === "intro" && Date.now() >= S.introUntil) openQuestion();
   }
   /* ---------- Nätverkshändelser ---------- */
@@ -1468,6 +1582,8 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     if (p.t === "state" && !isHost) { S = p.s; offset = p.now - Date.now(); onState(); }
     else if (p.t === "ans" && isHost) hostAnswer(p.pid, p.q, p.a);
     else if (p.t === "ready" && isHost) hostReady(p.pid, p.k);
+    else if (p.t === "guess" && isHost) hostGuess(p.pid, p.q, p.c, p.text);
+    else if (p.t === "fb" && !isHost && p.pid === me.pid) onFb(p);
     else if (p.t === "hello" && isHost) broadcast();
   }
   function onState() {
@@ -1503,8 +1619,29 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     if (a.pts === 0) return { err: a.name + " har inte spelat i någon av klubbarna. Försök med någon annan." };
     return { a: { id: a.id, name: a.name, pts: a.pts, clubs: q.clubs, hits: a.hits, club: null } };
   }
-  function remaining() { return S.deadline - (Date.now() + (isHost ? 0 : offset)); }
+  function remaining() { return (isVaj() ? S.clueEnd : S.deadline) - (Date.now() + (isHost ? 0 : offset)); }
+  function vajSubmit(text) {
+    if (!S || S.phase !== "q" || !text) return;
+    if (S.solved[me.pid] != null || S.guessed[me.pid] || (vSent && vSent.q === S.qi && vSent.c === S.ci)) return;
+    if (remaining() <= 0) return;
+    vSent = { q: S.qi, c: S.ci, text: text.slice(0, 60) };
+    $("ol-player").value = "";
+    if (isHost) hostGuess(me.pid, S.qi, S.ci, vSent.text);
+    else { lastGuessSend = Date.now(); net.send({ t: "guess", pid: me.pid, q: S.qi, c: S.ci, text: vSent.text }); }
+    vajMsg(); render();
+  }
+  function onFb(m) { vFb = { q: m.q, c: m.c, ok: m.ok, pts: m.pts }; vajMsg(); }
+  function vajMsg() {
+    if (!S || !isVaj() || S.phase !== "q") return;
+    var mp = S.solved ? S.solved[me.pid] : null;
+    if (mp != null) setMsg("Rätt! Du får " + poang(mp) + ". Vänta på de andra.", "ok");
+    else if (vSent && vSent.q === S.qi && vSent.c === S.ci) {
+      if (vFb && vFb.q === S.qi && vFb.c === S.ci) setMsg(S.ci >= 4 ? "Fel svar." : "Fel svar. Du kan svara igen på nästa ledtråd.", "err");
+      else setMsg("Svar skickat…", "busy");
+    } else setMsg("", "");
+  }
   function submit(input) {
+    if (isVaj()) { vajSubmit(input); return; }
     if (!S || S.phase !== "q" || answeredQ === S.qi || S.answered[me.pid] || !input) return;
     if (remaining() <= 0) return;
     if (!FS.DB) { setMsg("Spelardatan laddas fortfarande.", "busy"); return; }
@@ -1535,12 +1672,19 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       lastReadyResend = Date.now(); net.send({ t: "ready", pid: me.pid, k: localReady });
     }
     if (S.phase !== "q") return;
-    var left = Math.max(0, remaining());
-    $("ol-timerFill").style.width = (left / QMS * 100) + "%";
+    var vj = isVaj(), left = Math.max(0, remaining());
+    $("ol-timerFill").style.width = (left / (vj ? CLUE_MS : QMS) * 100) + "%";
     $("ol-timerNum").textContent = String(Math.ceil(left / 1000));
-    $("ol-timer").classList.toggle("low", left <= 10000);
-    var locked = left <= 0 || answeredQ === S.qi || !!S.answered[me.pid];
+    $("ol-timer").classList.toggle("low", left <= (vj ? 5000 : 10000));
+    var locked = vj ? (left <= 0 || S.solved[me.pid] != null || !!S.guessed[me.pid] || !!(vSent && vSent.q === S.qi && vSent.c === S.ci))
+                    : (left <= 0 || answeredQ === S.qi || !!S.answered[me.pid]);
     $("ol-player").disabled = locked; $("ol-go").disabled = locked;
+    if (vj) {   // skicka om gissningen tills värden kvitterat (meddelanden kan tappas)
+      if (!isHost && vSent && vSent.q === S.qi && vSent.c === S.ci && !(vFb && vFb.q === S.qi && vFb.c === S.ci) && Date.now() - lastGuessSend > 1500) {
+        lastGuessSend = Date.now(); net.send({ t: "guess", pid: me.pid, q: S.qi, c: S.ci, text: vSent.text });
+      }
+      return;
+    }
     // Skicka om svaret om värden inte har kvitterat (meddelanden kan tappas).
     if (!isHost && pendingAns && pendingAns.q === S.qi && !S.answered[me.pid] && Date.now() - lastResend > 1500) {
       lastResend = Date.now(); net.send({ t: "ans", pid: me.pid, q: pendingAns.q, a: pendingAns.a });
@@ -1582,7 +1726,28 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     li.appendChild(head); li.appendChild(chipsFor(a, q)); return li;
   }
 
+  function vajCard(p, a, rv) {
+    var li = el("li", "pick"), head = el("div", "pick-head");
+    head.appendChild(el("span", "pick-name", rv ? "Fråga: " + rv.name : p.name + (p.pid === me.pid ? " (du)" : "")));
+    head.appendChild(el("span", "pick-pts", poang(a.pts)));
+    var chips = el("div", "chips");
+    chips.appendChild(el("span", "chip" + (a.pts ? " hit" : ""), a.pts ? "Rätt på ledtråd " + (a.clue + 1) : "Ingen rätt"));
+    li.appendChild(head); li.appendChild(chips); return li;
+  }
+  function renderClues() {
+    var box = $("ol-clues"); clear(box);
+    for (var i = 0; i < 5; i++) {
+      var shown = i < S.clues.length, now = i === S.ci;
+      var d = el("div", "clue" + (now ? " now" : (shown ? " old" : " locked")));
+      d.appendChild(el("div", "cpts", (10 - 2 * i) + " p"));
+      var body = el("div", "cbody");
+      body.appendChild(el("div", "eyebrow", "Ledtråd " + (i + 1) + (shown ? "" : " · låst")));
+      if (shown) body.appendChild(el("p", null, S.clues[i]));
+      d.appendChild(body); box.appendChild(d);
+    }
+  }
   function waitText(base) {
+    if (S.note) return S.note;
     var w = S.players.filter(function (p) { return p.on && !S.ready[p.pid]; }).map(function (p) { return p.name; });
     return w.length ? "Väntar på: " + w.join(", ") + "." : base;
   }
@@ -1605,7 +1770,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       $("ol-ready").disabled = myReady();
       $("ol-ready").textContent = myReady() ? "Redo \u2713" : "Redo";
       $("ol-wait").textContent = !enough ? "Väntar på fler spelare. Minst " + MINP + " behövs." : waitText("Spelet startar när alla är redo.");
-      lastQ = -1; answeredQ = -1; pendingAns = null; selPid = null;
+      lastQ = -1; answeredQ = -1; pendingAns = null; selPid = null; vSent = null; vFb = null;
     }
 
     if (ph === "intro") {
@@ -1614,21 +1779,43 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     }
 
     if (ph === "q") {
-      var q = S.questions[S.qi];
-      $("ol-roundLabel").textContent = "Fråga " + (S.qi + 1) + " av " + Q;
-      clubCards($("ol-clubs"), q);
       var who = $("ol-who"); clear(who);
-      S.players.forEach(function (p) { who.appendChild(el("span", "chip" + (S.answered[p.pid] ? " hit" : ""), p.name + (S.answered[p.pid] ? " ✓" : (p.on ? " …" : " (frånkopplad)")))); });
-      if (S.qi !== lastQ) { lastQ = S.qi; answeredQ = -1; pendingAns = null; $("ol-player").value = ""; setMsg("", ""); $("ol-player").disabled = false; $("ol-go").disabled = false; if (!$("ol-room").hidden) $("ol-player").focus(); }
+      $("ol-clubs").hidden = isVaj(); $("ol-clues").hidden = !isVaj(); $("ol-vcount").hidden = !isVaj();
+      $("ol-player").placeholder = isVaj() ? "Skriv spelarens namn" : "t.ex. Zlatan";
+      if (isVaj()) {
+        $("ol-roundLabel").textContent = "Fråga " + (S.qi + 1) + " av " + Q + " · Ledtråd " + (S.ci + 1) + " av 5 · " + (10 - 2 * S.ci) + " poäng";
+        renderClues();
+        var onl = S.players.filter(function (p) { return p.on; }), nd = onl.filter(function (p) { return S.guessed[p.pid] || S.solved[p.pid] != null; }).length;
+        $("ol-vcount").textContent = nd + " av " + onl.length + " har svarat på den här ledtråden.";
+        S.players.forEach(function (p) {
+          var sv = S.solved[p.pid] != null, gd = !!S.guessed[p.pid];
+          who.appendChild(el("span", "chip" + (sv || gd ? " hit" : ""), p.name + (sv ? " · rätt ✓" : (gd ? " ✓" : (p.on ? " …" : " (frånkopplad)")))));
+        });
+      } else {
+        var q = S.questions[S.qi];
+        $("ol-roundLabel").textContent = "Fråga " + (S.qi + 1) + " av " + Q;
+        clubCards($("ol-clubs"), q);
+        S.players.forEach(function (p) { who.appendChild(el("span", "chip" + (S.answered[p.pid] ? " hit" : ""), p.name + (S.answered[p.pid] ? " ✓" : (p.on ? " …" : " (frånkopplad)")))); });
+      }
+      if (S.qi !== lastQ) { lastQ = S.qi; vSent = null; vFb = null; answeredQ = -1; pendingAns = null; $("ol-player").value = ""; setMsg("", ""); $("ol-player").disabled = false; $("ol-go").disabled = false; if (!$("ol-room").hidden) $("ol-player").focus(); }
+      if (isVaj()) vajMsg();
       tick();
     }
 
     if (ph === "reveal") {
       var rq = S.questions[S.qi];
       $("ol-revealLabel").textContent = "Fråga " + (S.qi + 1) + " av " + Q + " · svar";
-      clubCards($("ol-revealClubs"), rq);
       var al = $("ol-answers"); clear(al);
-      S.players.forEach(function (p) { var a = (S.hist[p.pid] || [])[S.qi]; if (a) al.appendChild(answerCard(p, a, rq)); });
+      if (isVaj()) {
+        var rv = S.reveals[S.qi], rc = $("ol-revealClubs"); clear(rc); rc.appendChild(el("div", "t3-club", rv.name));
+        S.players.forEach(function (p) { var a = (S.hist[p.pid] || [])[S.qi]; if (a) al.appendChild(vajCard(p, a, null)); });
+        var rl = el("li", "pick"); rl.appendChild(el("div", "eyebrow", "Ledtrådarna"));
+        rv.clues.forEach(function (c, i) { rl.appendChild(el("p", "note", (i + 1) + ". " + c + " (" + (10 - 2 * i) + " p)")); });
+        al.appendChild(rl);
+      } else {
+        clubCards($("ol-revealClubs"), rq);
+        S.players.forEach(function (p) { var a = (S.hist[p.pid] || [])[S.qi]; if (a) al.appendChild(answerCard(p, a, rq)); });
+      }
       boardRows($("ol-standings"), ranking(), false);
       var last = S.qi + 1 >= Q;
       $("ol-next").disabled = myReady();
@@ -1644,7 +1831,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       boardRows($("ol-leaderboard"), rows, true);
       var pk = $("ol-picks"); clear(pk);
       var sp = S.players.filter(function (p) { return p.pid === selPid; })[0];
-      (S.hist[selPid] || []).forEach(function (a, i) { pk.appendChild(answerCard(sp, a, S.questions[i])); });
+      (S.hist[selPid] || []).forEach(function (a, i) { pk.appendChild(isVaj() ? vajCard(sp, a, S.reveals[i]) : answerCard(sp, a, S.questions[i])); });
       $("ol-again").disabled = myReady();
       $("ol-again").textContent = myReady() ? "Redo \u2713" : "Redo för ny omgång";
       $("ol-finalWait").textContent = waitText("Ny omgång startar när alla är redo.");
@@ -1657,7 +1844,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     [hostGoneTimer, joinTimer].forEach(function (t) { if (t) clearTimeout(t); });
     hbTimer = hostTimer = tickTimer = hostGoneTimer = joinTimer = null;
     if (net) { try { net.leave(); } catch (e) { /* ignore */ } }
-    net = null; S = null; isHost = false; joined = false; presence = []; cur = {}; mine = []; usedPrior = []; lastQ = -1; answeredQ = -1; pendingAns = null; helloSent = false; starting = false; localReady = "";
+    net = null; S = null; isHost = false; joined = false; presence = []; cur = {}; mine = []; usedPrior = []; lastQ = -1; answeredQ = -1; pendingAns = null; helloSent = false; starting = false; localReady = ""; vSent = null; vFb = null; vg = {}; vajQs = [];
     showMenu();
   }
   function copy(text, label) {
@@ -1667,7 +1854,9 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   }
   function configure() {
     var g = GAMES[gameKey];
-    $("ol-title").textContent = g.title; $("ol-lede").textContent = g.lede; $("ol-offline").setAttribute("href", g.offline);
+    $("ol-title").textContent = g.title; $("ol-lede").textContent = g.lede;
+    $("ol-title").style.textTransform = gameKey === VAJ ? "uppercase" : "";
+    $("ol-offline").parentNode.hidden = !g.offline; if (g.offline) $("ol-offline").setAttribute("href", g.offline);
     var off = !AVAILABLE;
     $("ol-notice").hidden = !off;
     $("ol-notice").textContent = "Onlineläget är inte aktiverat här. Det kräver att sidan är publicerad med en Supabase-konfiguration (se README).";
@@ -1709,7 +1898,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   var views = ["femmanalaget", "tre-klubbar", "online"];
   function route() {
     var name = location.hash.replace(/^#/, "");
-    var view = /^online-(femmanalaget|tre-klubbar)$/.test(name) ? "online" : name;
+    var view = /^online-(femmanalaget|tre-klubbar|vem-ar-jag)$/.test(name) ? "online" : name;
     var active = views.indexOf(view) >= 0 ? view : null;
     document.getElementById("home").hidden = !!active;
     views.forEach(function (v) { document.getElementById("view-" + v).hidden = v !== active; });
