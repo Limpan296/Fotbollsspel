@@ -8,12 +8,13 @@ Det är en helt statisk sida: inga servrar, inga konton och inga nycklar behövs
 
 | Fil | Vad |
 |---|---|
-| `index.html` | Hela sidan: startsida, Femmanalaget och Tre klubbar |
+| `index.html` | Hela sidan: startsida, Femmanalaget, Tre klubbar och Vem är jag? |
 | `config.js` | Inställningar för onlineläget (Supabase-adress och nyckel) |
+| `vemarjag.json` | Ledtrådar till Vem är jag? (900 frågor, byggda ur samma data) |
 | `players.json` | Spelardata (5,4 MB), byggd från github.com/salimt/football-datasets |
 | `uppdatera-data/build_players_data.py` | Skriptet som bygger om `players.json` med färsk data |
 
-Filerna `index.html`, `config.js` och `players.json` måste ligga i samma mapp.
+Filerna `index.html`, `config.js`, `players.json` och `vemarjag.json` måste ligga i samma mapp.
 
 ## Köra lokalt
 
@@ -46,6 +47,8 @@ Onlineläget låter 2–8 personer spela på varsin enhet. En skapar match och f
 
 4. Publicera om mappen. På startsidan visas nu knapparna "Femmanalaget online" och "Tre klubbar online".
 
+**Vem är jag?** spelas bara online (2–8 spelare). Alla ser samma ledtråd, en ny kommer var 20:e sekund, och rätt svar ger 10, 8, 6, 4 eller 2 poäng beroende på ledtråd. Man kan svara en gång per ledtråd. Värden bedömer svaren, så ett fel svar syns bara för den som gissade.
+
 Bra att veta:
 - Anon-nyckeln är gjord för att ligga i webbsidor. Använd aldrig `service_role`-nyckeln.
 - Matchen bor i värdens webbläsare. Stänger värden fliken eller tappar nätet avslutas matchen för alla. En spelare som tappar anslutningen får noll poäng på frågan.
@@ -56,11 +59,15 @@ Bra att veta:
 
     python3 uppdatera-data/build_players_data.py .
 
-Skriptet hämtar de CSV-filer som behövs från GitHub, räknar unika seniorklubbar per spelare och skriver en ny `players.json` i mappen. Ladda sedan upp den nya filen. Hela körningen tar några minuter (transferfilen är ca 80 MB). Bara Python 3 behövs, inga extra paket.
+Skriptet hämtar de CSV-filer som behövs från GitHub, räknar unika seniorklubbar per spelare och skriver en ny `players.json` i mappen. Kör sedan `python3 uppdatera-data/build_vemarjag.py players.json .` för att bygga om ledtrådarna (`vemarjag.json`). Ladda sedan upp de nya filerna. Hela körningen tar några minuter (transferfilen är ca 80 MB). Bara Python 3 behövs, inga extra paket.
 
 ## Datakälla och villkor
 
 Spelardatan kommer från https://github.com/salimt/football-datasets, som i sin tur bygger på Transfermarkt. Repot har ingen licensfil. Det är fint att dela med kollegor, men kolla villkoren innan du publicerar det brett eller tjänar pengar på det.
+
+## Ledtrådarna i Vem är jag?
+
+Alla uppgifter kommer ur datasetet: födelseland eller medborgarskap, antal unika seniorklubbar, position, fot, klubbar, klubbarnas länder, nuvarande eller senaste klubb, landskamper och födelseår. Titlar och utmärkelser finns inte i datasetet och används därför inte. Varje fråga kontrolleras mot hela datasetet så att bara en spelare passar på alla ledtrådar. Klubbland saknas för en del små klubbar, och då nämns bara de länder som är kända. Landskamper är avrundade nedåt, till exempel "minst 80".
 
 ## Så räknas poängen
 
