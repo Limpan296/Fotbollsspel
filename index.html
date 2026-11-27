@@ -1,0 +1,1724 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Fotbollsspel: Femmanalaget och Tre klubbar. Poäng för varje klubb spelarna har spelat i.">
+<title>Fotbollsspelen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root { color-scheme: light; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+</style>
+<style>
+/* Layout: en kontrollkolumn (inställningar, tur, ställning) bredvid en stående plan. Stackas på mobil. */
+:root {
+  --bg: #f2f5f0;
+  --fg: #13201a;
+  --muted: #55675b;
+  --card: #ffffff;
+  --line: #d6ded5;
+  --accent: #0e7a3c;
+  --accent-fg: #ffffff;
+  --warn: #a84a14;
+  --pitch-a: #1d7a3e;
+  --pitch-b: #1a6e38;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1410; --fg: #e7efe8; --muted: #93a699; --card: #151f19; --line: #25342a;
+    --accent: #43d27d; --accent-fg: #07140c; --warn: #f0a368;
+    --pitch-a: #1b6d39; --pitch-b: #175f31;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1410; --fg: #e7efe8; --muted: #93a699; --card: #151f19; --line: #25342a;
+  --accent: #43d27d; --accent-fg: #07140c; --warn: #f0a368;
+  --pitch-a: #1b6d39; --pitch-b: #175f31;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-block: 24px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 6vw, 3rem); line-height: 1; margin: 0; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.8rem; line-height: 1.05; margin: 0; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+.grid > * { min-width: 0; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 16px; }
+.panel[hidden], .grid[hidden], div[hidden], form[hidden] { display: none; }
+.eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.club { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.2rem, 8vw, 3.2rem); line-height: 1; margin: 4px 0 0; text-wrap: balance; }
+.hint { margin: 6px 0 0; color: var(--muted); font-size: .9rem; }
+form { display: grid; gap: 10px; }
+label { font-weight: 600; font-size: .9rem; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+input[type=text], select {
+  flex: 1 1 180px; min-width: 0; font: inherit; padding: 12px 14px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+}
+select { flex: 0 0 auto; min-width: 5.5rem; }
+input[type=text]:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button {
+  font: inherit; font-weight: 600; padding: 12px 18px; border-radius: 8px; border: 0; cursor: pointer;
+  background: var(--accent); color: var(--accent-fg);
+}
+button.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+button:disabled { opacity: .55; cursor: progress; }
+.names { display: grid; gap: 10px; }
+.name-field { display: grid; gap: 4px; }
+.timer { display: flex; align-items: center; gap: 12px; }
+.timer-bar { flex: 1; height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.timer-bar span { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 999px; }
+.timer-num { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1; min-width: 2.2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.timer.low .timer-bar span { background: var(--warn); }
+.timer.low .timer-num { color: var(--warn); }
+.msg { min-height: 1.5em; margin: 0; font-size: .95rem; }
+.msg.err { color: var(--warn); }
+.msg.busy { color: var(--muted); }
+.picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pick { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; }
+.pick-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.pick-name { font-weight: 600; }
+.pick-pts { font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: .75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.hit { color: var(--fg); border-color: var(--accent); }
+.total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.total b { font-family: var(--font-display); font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.pitch-box { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.pitch-box svg { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; border-radius: 6px; }
+.pitch-owner { text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; line-height: 1.1; overflow-wrap: anywhere; }
+.board { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rowbtn {
+  width: 100%; display: grid; grid-template-columns: 2rem 1fr auto; gap: 12px; align-items: center; text-align: left;
+  background: transparent; color: var(--fg); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px;
+}
+.rowbtn[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.rank { font-family: var(--font-display); font-weight: 700; font-size: 1.5rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rowbtn.top .rank { color: var(--accent); }
+.rname { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.rscore { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.big { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 11vw, 4rem); line-height: 1; color: var(--accent); overflow-wrap: anywhere; }
+.stack { display: grid; gap: 12px; }
+.note { font-size: .8rem; color: var(--muted); margin: 0; }
+.notice { margin: 0; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 8px; color: var(--warn); font-size: .9rem; }
+.topbar { max-width: 980px; margin: 0 auto 16px; }
+.back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: .9rem; padding: 6px 0; }
+.back:hover { color: var(--fg); }
+.back:focus-visible, .game-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.games > * { min-width: 0; }
+.game-card { display: grid; gap: 14px; align-content: start; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; color: var(--fg); text-decoration: none; transition: border-color .15s, transform .15s; }
+a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.game-art { display: block; width: 100%; height: auto; max-height: 150px; border-radius: 6px; }
+.game-card p { margin: 0; color: var(--muted); font-size: .95rem; }
+.game-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.game-go { font-weight: 600; color: var(--accent); }
+.game-card.soon { border-style: dashed; background: transparent; align-content: center; justify-items: start; min-height: 120px; }
+.game-card.soon h2 { color: var(--muted); }
+.msg.ok { color: var(--accent); font-weight: 600; }
+.narrow { max-width: 720px; margin: 0 auto; width: 100%; }
+.t3-clubs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.t3-club { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 18px 12px; text-align: center; display: grid; align-items: center; min-height: 92px;
+  font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.05; overflow-wrap: anywhere; text-wrap: balance; }
+.chip.miss { text-decoration: line-through; opacity: .6; }
+.code { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 12vw, 4rem); letter-spacing: .14em; color: var(--accent); line-height: 1; }
+.tag { font-size: .75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.tag.ok { color: var(--accent); border-color: var(--accent); }
+.linkbtn { color: var(--muted); font-size: .9rem; }
+.online-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.online-row a { display: inline-block; padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; color: var(--fg); text-decoration: none; font-weight: 600; background: var(--card); }
+.online-row a:hover { border-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .pick { animation: in .25s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<div id="home" class="wrap">
+  <header>
+    <h1>Fotbollsspelen</h1>
+    <p class="lede">Välj ett spel.</p>
+  </header>
+  <div class="games">
+    <a class="game-card" href="#femmanalaget">
+      <svg class="game-art" viewBox="0 0 360 150" role="img" aria-label="Fotbollsplan med fem spelare" preserveAspectRatio="xMidYMid slice">
+        <rect width="360" height="150" fill="var(--pitch-a)"/>
+        <rect x="60" width="60" height="150" fill="var(--pitch-b)"/><rect x="180" width="60" height="150" fill="var(--pitch-b)"/><rect x="300" width="60" height="150" fill="var(--pitch-b)"/>
+        <g fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2"><rect x="10" y="10" width="340" height="130"/><line x1="180" y1="10" x2="180" y2="140"/><circle cx="180" cy="75" r="26"/></g>
+        <g fill="#ffffff" stroke="rgba(0,0,0,.3)" stroke-width="2"><circle cx="45" cy="75" r="11"/><circle cx="115" cy="38" r="11"/><circle cx="115" cy="112" r="11"/><circle cx="200" cy="75" r="11"/><circle cx="295" cy="75" r="11"/></g>
+      </svg>
+      <div>
+        <h2>Femmanalaget</h2>
+        <p>Bygg ett lag med fem spelare. Få ett poäng för varje klubb spelaren har representerat.</p>
+      </div>
+      <div class="game-meta"><span class="eyebrow">1–8 spelare · 30 sek per klubb</span><span class="game-go">Spela &rarr;</span></div>
+    </a>
+    <a class="game-card" href="#tre-klubbar">
+      <svg class="game-art" viewBox="0 0 360 150" role="img" aria-label="Tre överlappande cirklar" preserveAspectRatio="xMidYMid slice">
+        <rect width="360" height="150" fill="var(--pitch-a)"/>
+        <g stroke="rgba(255,255,255,.85)" stroke-width="2.5" fill="#ffffff" fill-opacity=".16">
+          <circle cx="140" cy="62" r="46"/><circle cx="220" cy="62" r="46"/><circle cx="180" cy="100" r="46"/>
+        </g>
+        <circle cx="180" cy="78" r="9" fill="#ffffff"/>
+      </svg>
+      <div>
+        <h2>Tre klubbar</h2>
+        <p>Tre klubbar visas. Skriv en spelare och få ett poäng för varje klubb han har spelat i.</p>
+      </div>
+      <div class="game-meta"><span class="eyebrow">1–8 spelare · 30 sek per fråga</span><span class="game-go">Spela &rarr;</span></div>
+    </a>
+    <div class="game-card soon">
+      <h2>Fler spel kommer</h2>
+    </div>
+  </div>
+  <div class="online-row" hidden>
+    <span class="eyebrow">Spela online, varsin enhet</span>
+    <a href="#online-femmanalaget">Femmanalaget online</a>
+    <a href="#online-tre-klubbar">Tre klubbar online</a>
+  </div>
+</div>
+
+<div id="view-femmanalaget" hidden>
+<div class="topbar"><a class="back" href="#start">&larr; Alla spel</a></div>
+<div class="wrap">
+  <header>
+    <h1>Femmanalaget</h1>
+    <p class="lede">Bygg ett lag med fem spelare. Varje runda visas en storklubb. Skriv en spelare som har spelat i den klubbens A-lag och få ett poäng för varje seniorklubb spelaren har representerat. Du har 30 sekunder på dig per klubb. Flest poäng efter fem spelare vinner.</p>
+  </header>
+
+  <p class="notice" id="notice" hidden>Spelardatan kunde inte laddas. Ladda om sidan och försök igen.</p>
+
+  <section class="panel" id="setup">
+    <div class="stack">
+      <h2>Ny omgång</h2>
+      <p class="hint">Alla spelar på samma enhet och turas om. Välj om alla får samma fem klubbar eller egna.</p>
+    </div>
+    <div class="stack">
+      <label for="count">Antal spelare</label>
+      <div class="row"><select id="count" name="count"></select></div>
+    </div>
+    <div class="stack" id="modeBox">
+      <label for="clubmode">Klubbar</label>
+      <div class="row">
+        <select id="clubmode" name="clubmode">
+          <option value="same">Samma fem klubbar för alla</option>
+          <option value="own">Nya slumpade klubbar för varje spelare</option>
+        </select>
+      </div>
+    </div>
+    <div class="names" id="names"></div>
+    <div class="row"><button type="button" id="start">Starta spelet</button></div>
+  </section>
+
+  <div class="grid" id="game" hidden>
+    <section class="panel" aria-live="polite">
+      <div id="playBox" class="stack">
+        <div>
+          <div class="eyebrow" id="roundLabel"></div>
+          <p class="club" id="clubName"></p>
+          <p class="hint">Spelaren ska ha spelat i A-laget i den här klubben. Stavfel gör inget.</p>
+        </div>
+        <div class="timer" id="timer" role="timer" aria-live="off" aria-label="Tid kvar för frågan">
+          <div class="timer-bar"><span id="timerFill"></span></div>
+          <span class="timer-num" id="timerNum">30</span>
+        </div>
+        <form id="form" autocomplete="off">
+          <label for="player">Spelare</label>
+          <div class="row">
+            <input type="text" id="player" name="player" placeholder="t.ex. Zlatan Ibrahimovic" maxlength="60" required>
+            <button type="submit" id="go">Lägg till</button>
+          </div>
+        </form>
+        <p class="msg" id="msg" role="status"></p>
+      </div>
+
+      <div id="betweenBox" class="stack" hidden>
+        <div class="eyebrow">Laget är klart</div>
+        <p class="big" id="betweenScore"></p>
+        <p id="betweenText" class="hint"></p>
+        <ol class="board" id="standings"></ol>
+        <div class="row"><button type="button" id="next"></button></div>
+      </div>
+
+      <div id="resultsBox" class="stack" hidden>
+        <div class="eyebrow">Resultat</div>
+        <p class="big" id="winner"></p>
+        <p class="hint" id="winnerNote"></p>
+        <ol class="board" id="leaderboard"></ol>
+        <p class="note">Tryck på en spelare för att se laget på planen.</p>
+        <div class="row">
+          <button type="button" id="again">Spela igen med samma spelare</button>
+          <button type="button" id="fresh" class="ghost">Nya spelare</button>
+        </div>
+      </div>
+
+      <ul class="picks" id="picks"></ul>
+      <div class="total"><span class="eyebrow" id="totalLabel">Totalt</span><b id="total">0</b></div>
+      <p class="note">Karriärdata kommer från Transfermarkt via datasetet salimt/football-datasets. Lån räknas, ungdoms- och B-lag räknas inte.</p>
+    </section>
+
+    <section class="pitch-box" aria-label="Laget på planen">
+      <div class="pitch-owner" id="pitchOwner"></div>
+      <svg id="pitch" viewBox="0 0 360 500" role="img" aria-label="Fotbollsplan med laget"></svg>
+    </section>
+  </div>
+</div>
+</div>
+
+<div id="view-tre-klubbar" hidden>
+<div class="topbar"><a class="back" href="#start">&larr; Alla spel</a></div>
+<div class="wrap">
+  <header>
+    <h1>Tre klubbar</h1>
+    <p class="lede">Tre klubbar visas. Skriv en spelare och få ett poäng för varje klubb han har spelat i. Minst en spelare har spelat i alla tre. Du har 30 sekunder per fråga och fem frågor. Flest poäng vinner.</p>
+  </header>
+
+  <p class="notice" id="t3-notice" hidden>Spelardatan kunde inte laddas. Ladda om sidan och försök igen.</p>
+
+  <section class="panel narrow" id="t3-setup">
+    <div class="stack">
+      <h2>Ny omgång</h2>
+      <p class="hint">Alla spelar på samma enhet och turas om. Välj om alla får samma klubbar eller egna.</p>
+    </div>
+    <div class="stack">
+      <label for="t3-count">Antal spelare</label>
+      <div class="row"><select id="t3-count" name="t3-count"></select></div>
+    </div>
+    <div class="stack" id="t3-modeBox">
+      <label for="t3-clubmode">Klubbar</label>
+      <div class="row">
+        <select id="t3-clubmode" name="t3-clubmode">
+          <option value="same">Samma klubbar för alla</option>
+          <option value="own">Nya slumpade klubbar för varje spelare</option>
+        </select>
+      </div>
+    </div>
+    <div class="names" id="t3-names"></div>
+    <div class="row"><button type="button" id="t3-start">Starta spelet</button></div>
+  </section>
+
+  <section class="panel narrow" id="t3-game" aria-live="polite" hidden>
+    <div id="t3-playBox" class="stack">
+      <div class="eyebrow" id="t3-roundLabel"></div>
+      <div class="t3-clubs" id="t3-clubs"></div>
+      <div class="timer" id="t3-timer" role="timer" aria-live="off" aria-label="Tid kvar för frågan">
+        <div class="timer-bar"><span id="t3-timerFill"></span></div>
+        <span class="timer-num" id="t3-timerNum">30</span>
+      </div>
+      <form id="t3-form" autocomplete="off">
+        <label for="t3-player">Spelare</label>
+        <div class="row">
+          <input type="text" id="t3-player" name="t3-player" placeholder="t.ex. Zlatan" maxlength="60" required>
+          <button type="submit" id="t3-go">Lägg till</button>
+        </div>
+      </form>
+      <p class="msg" id="t3-msg" role="status"></p>
+    </div>
+
+    <div id="t3-betweenBox" class="stack" hidden>
+      <div class="eyebrow">Omgången är klar</div>
+      <p class="big" id="t3-betweenScore"></p>
+      <p id="t3-betweenText" class="hint"></p>
+      <ol class="board" id="t3-standings"></ol>
+      <div class="row"><button type="button" id="t3-next"></button></div>
+    </div>
+
+    <div id="t3-resultsBox" class="stack" hidden>
+      <div class="eyebrow">Resultat</div>
+      <p class="big" id="t3-winner"></p>
+      <p class="hint" id="t3-winnerNote"></p>
+      <ol class="board" id="t3-leaderboard"></ol>
+      <p class="note">Tryck på en spelare för att se svaren.</p>
+      <div class="row">
+        <button type="button" id="t3-again">Spela igen med samma spelare</button>
+        <button type="button" id="t3-fresh" class="ghost">Nya spelare</button>
+      </div>
+    </div>
+
+    <ul class="picks" id="t3-picks"></ul>
+    <div class="total"><span class="eyebrow" id="t3-totalLabel">Totalt</span><b id="t3-total">0</b></div>
+    <p class="note">Karriärdata kommer från Transfermarkt via datasetet salimt/football-datasets. Lån räknas, ungdoms- och B-lag räknas inte.</p>
+  </section>
+</div>
+</div>
+
+<div id="view-online" hidden>
+<div class="topbar"><a class="back" href="#start">&larr; Alla spel</a></div>
+<div class="wrap">
+  <header>
+    <h1 id="ol-title">Online</h1>
+    <p class="lede" id="ol-lede"></p>
+  </header>
+
+  <p class="notice" id="ol-notice" hidden></p>
+
+  <section class="panel narrow" id="ol-menu">
+    <div class="stack">
+      <label for="ol-name">Ditt namn</label>
+      <div class="row"><input type="text" id="ol-name" name="ol-name" maxlength="20" placeholder="Ditt namn" autocomplete="off"></div>
+    </div>
+    <div class="row"><button type="button" id="ol-create">Skapa match</button></div>
+    <div class="stack">
+      <label for="ol-code">Eller gå med i en match</label>
+      <div class="row">
+        <input type="text" id="ol-code" name="ol-code" maxlength="5" placeholder="Kod, t.ex. K7M2Q" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button type="button" id="ol-join" class="ghost">Gå med</button>
+      </div>
+    </div>
+    <p class="msg" id="ol-menuMsg" role="status"></p>
+    <p class="note">2–8 spelare. Alla spelar på varsin enhet och får samma frågor samtidigt.</p>
+    <div class="row"><a class="linkbtn" id="ol-offline" href="#start">Spela på en enhet i stället</a></div>
+  </section>
+
+  <section class="panel narrow" id="ol-room" aria-live="polite" hidden>
+    <div id="ol-lobby" class="stack" hidden>
+      <div class="eyebrow">Matchkod</div>
+      <p class="code" id="ol-codeShow"></p>
+      <div class="row">
+        <button type="button" class="ghost" id="ol-copyCode">Kopiera kod</button>
+        <button type="button" class="ghost" id="ol-copyLink">Kopiera länk</button>
+      </div>
+      <div class="eyebrow" id="ol-count"></div>
+      <ul class="picks" id="ol-players"></ul>
+      <p class="hint" id="ol-wait"></p>
+      <div class="row"><button type="button" id="ol-ready">Redo</button></div>
+    </div>
+
+    <div id="ol-intro" class="stack" hidden>
+      <div class="eyebrow">Gör dig redo</div>
+      <p class="big" id="ol-introText"></p>
+    </div>
+
+    <div id="ol-q" class="stack" hidden>
+      <div class="eyebrow" id="ol-roundLabel"></div>
+      <div class="t3-clubs" id="ol-clubs"></div>
+      <div class="timer" id="ol-timer" role="timer" aria-live="off" aria-label="Tid kvar för frågan">
+        <div class="timer-bar"><span id="ol-timerFill"></span></div>
+        <span class="timer-num" id="ol-timerNum">30</span>
+      </div>
+      <form id="ol-form" autocomplete="off">
+        <label for="ol-player">Spelare</label>
+        <div class="row">
+          <input type="text" id="ol-player" name="ol-player" placeholder="t.ex. Zlatan" maxlength="60" required>
+          <button type="submit" id="ol-go">Svara</button>
+        </div>
+      </form>
+      <p class="msg" id="ol-msg" role="status"></p>
+      <div class="chips" id="ol-who"></div>
+    </div>
+
+    <div id="ol-reveal" class="stack" hidden>
+      <div class="eyebrow" id="ol-revealLabel"></div>
+      <div class="t3-clubs" id="ol-revealClubs"></div>
+      <ul class="picks" id="ol-answers"></ul>
+      <div class="eyebrow">Ställning</div>
+      <ol class="board" id="ol-standings"></ol>
+      <p class="hint" id="ol-revealWait"></p>
+      <div class="row"><button type="button" id="ol-next">Redo</button></div>
+    </div>
+
+    <div id="ol-final" class="stack" hidden>
+      <div class="eyebrow">Resultat</div>
+      <p class="big" id="ol-winner"></p>
+      <p class="hint" id="ol-winnerNote"></p>
+      <ol class="board" id="ol-leaderboard"></ol>
+      <p class="note">Tryck på en spelare för att se svaren.</p>
+      <ul class="picks" id="ol-picks"></ul>
+      <div class="row">
+        <button type="button" id="ol-again">Redo för ny omgång</button>
+      </div>
+      <p class="hint" id="ol-finalWait"></p>
+    </div>
+
+    <div class="row"><button type="button" class="ghost" id="ol-leave">Lämna matchen</button></div>
+  </section>
+</div>
+</div>
+
+<script>
+(function () {
+  var CLUBS = ["Manchester United","Manchester City","Liverpool","Chelsea","Arsenal","Tottenham Hotspur",
+    "Newcastle United","Everton","West Ham United","Aston Villa","Leicester City","Leeds United",
+    "Real Madrid","FC Barcelona","Atlético Madrid","Sevilla","Valencia","Villarreal","Real Sociedad","Athletic Bilbao","Real Betis",
+    "Juventus","AC Milan","Inter","Napoli","AS Roma","Lazio","Atalanta","Fiorentina",
+    "Bayern München","Borussia Dortmund","Bayer Leverkusen","RB Leipzig","Schalke 04","VfL Wolfsburg","Borussia Mönchengladbach","Eintracht Frankfurt","Werder Bremen",
+    "Paris Saint-Germain","Olympique de Marseille","Olympique Lyonnais","AS Monaco","Lille",
+    "Ajax","Benfica","FC Porto"];
+  var COUNTRY = {"Manchester United":"EN","Manchester City":"EN","Liverpool":"EN","Chelsea":"EN","Arsenal":"EN","Tottenham Hotspur":"EN",
+    "Newcastle United":"EN","Everton":"EN","West Ham United":"EN","Aston Villa":"EN","Leicester City":"EN","Leeds United":"EN",
+    "Real Madrid":"ES","FC Barcelona":"ES","Atlético Madrid":"ES","Sevilla":"ES","Valencia":"ES","Villarreal":"ES","Real Sociedad":"ES","Athletic Bilbao":"ES","Real Betis":"ES",
+    "Juventus":"IT","AC Milan":"IT","Inter":"IT","Napoli":"IT","AS Roma":"IT","Lazio":"IT","Atalanta":"IT","Fiorentina":"IT",
+    "Bayern München":"DE","Borussia Dortmund":"DE","Bayer Leverkusen":"DE","RB Leipzig":"DE","Schalke 04":"DE","VfL Wolfsburg":"DE","Borussia Mönchengladbach":"DE","Eintracht Frankfurt":"DE","Werder Bremen":"DE",
+    "Paris Saint-Germain":"FR","Olympique de Marseille":"FR","Olympique Lyonnais":"FR","AS Monaco":"FR","Lille":"FR",
+    "Ajax":"NL","Benfica":"PT","FC Porto":"PT"};
+  // De fem stora ligorna väger lika mycket; Nederländerna och Portugal väger mindre. Stora ligor får något fler klubbar i lottningen.
+  var LEAGUE_SHARE = {EN:1, ES:1, IT:1, DE:1, FR:1, NL:.3, PT:.3};
+  var LEAGUE_SIZE = {};
+  Object.keys(COUNTRY).forEach(function (c) { LEAGUE_SIZE[COUNTRY[c]] = (LEAGUE_SIZE[COUNTRY[c]] || 0) + 1; });
+  var QUESTION_MS = 30000;
+  var SLOTS = [
+    { x: 180, y: 440 },
+    { x: 95,  y: 335 },
+    { x: 265, y: 335 },
+    { x: 180, y: 225 },
+    { x: 180, y: 105 }
+  ];
+  var NS = "http://www.w3.org/2000/svg";
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { phase: "setup", players: [], cur: 0, sel: 0, busy: false };
+  var savedNames = [];
+
+  function norm(s) {
+    return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/\b(fc|cf|afc|ac|as|sc|sv|fk|if|cd|ud|rc|ssc|vfl|vfb|1\.|club|de|the)\b/g, "")
+      .replace(/[^a-z0-9]+/g, "");
+  }
+  function tot(p) { return p.picks.reduce(function (s, x) { return s + x.clubs.length; }, 0); }
+  function lag(n) { return n + (n === 1 ? " lag" : " lag"); }
+  function clear(n) { n.textContent = ""; }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function setMsg(text, cls) {
+    var m = $("msg"); m.textContent = text; m.className = "msg" + (cls ? " " + cls : "");
+  }
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  /* ---------- Inställningar ---------- */
+  function buildCount() {
+    var s = $("count");
+    for (var i = 1; i <= 8; i++) { var o = document.createElement("option"); o.value = i; o.textContent = i; s.appendChild(o); }
+    s.value = "2";
+  }
+  function buildNames() {
+    var n = parseInt($("count").value, 10) || 1;
+    var box = $("names");
+    var old = [];
+    Array.prototype.forEach.call(box.querySelectorAll("input"), function (inp) { old.push(inp.value); });
+    clear(box);
+    $("modeBox").hidden = n < 2;
+    for (var i = 0; i < n; i++) {
+      var wrap = el("div", "name-field");
+      var lab = el("label", null, n === 1 ? "Ditt namn" : "Namn, spelare " + (i + 1));
+      lab.setAttribute("for", "name" + i);
+      var inp = document.createElement("input");
+      inp.type = "text"; inp.id = "name" + i; inp.maxLength = 24; inp.autocomplete = "off";
+      inp.placeholder = "Spelare " + (i + 1);
+      inp.value = old[i] != null ? old[i] : (savedNames[i] || "");
+      wrap.appendChild(lab); wrap.appendChild(inp); box.appendChild(wrap);
+    }
+  }
+  function readNames() {
+    var out = [];
+    var n = parseInt($("count").value, 10) || 1;
+    for (var i = 0; i < n; i++) {
+      var v = ($("name" + i).value || "").trim();
+      out.push(v || "Spelare " + (i + 1));
+    }
+    return out;
+  }
+
+  // Väljer fem klubbar: viktat slumpurval som undvikit klubbar från senaste omgångarna
+  // och klubbar som redan delats ut i den här omgången, med högst två klubbar per land.
+  function readRecent() {
+    try { var r = JSON.parse(localStorage.getItem("femmanalaget-recent") || "[]"); return Array.isArray(r) ? r : []; } catch (e) { return []; }
+  }
+  function writeRecent(list) {
+    try { localStorage.setItem("femmanalaget-recent", JSON.stringify(list.slice(0, 10))); } catch (e) { /* ignore */ }
+  }
+  function pickFive(use, recent, n) {
+    var pool = CLUBS.slice(), out = [], perCountry = {};
+    n = n || 5;
+    while (out.length < n) {
+      var cand = pool.filter(function (c) { return (perCountry[COUNTRY[c]] || 0) < 2; });
+      if (!cand.length) cand = pool;
+      var w = cand.map(function (c) { return LEAGUE_SHARE[COUNTRY[c]] / Math.sqrt(LEAGUE_SIZE[COUNTRY[c]]) / (1 + 3 * (use[c] || 0) + (recent.indexOf(c) >= 0 ? 3 : 0)); });
+      var r = Math.random() * w.reduce(function (a, b) { return a + b; }, 0), k = 0;
+      while (k < cand.length - 1 && r >= w[k]) { r -= w[k]; k++; }
+      var c = cand[k];
+      out.push(c); pool.splice(pool.indexOf(c), 1);
+      perCountry[COUNTRY[c]] = (perCountry[COUNTRY[c]] || 0) + 1;
+    }
+    return out;
+  }
+
+  /* ---------- Timer ---------- */
+  var timerId = null, deadline = 0;
+  function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } }
+  function drawTimer() {
+    var left = Math.max(0, deadline - Date.now());
+    $("timerFill").style.width = (left / QUESTION_MS * 100) + "%";
+    $("timerNum").textContent = String(Math.ceil(left / 1000));
+    $("timer").classList.toggle("low", left <= 10000);
+    return left;
+  }
+  function startTimer() {
+    stopTimer();
+    if (state.phase !== "play") return;
+    deadline = Date.now() + QUESTION_MS;
+    drawTimer();
+    timerId = setInterval(function () { if (drawTimer() <= 0) onTimeout(); }, 100);
+  }
+  function onTimeout() {
+    stopTimer();
+    var me = state.players[state.cur];
+    if (state.phase !== "play" || !me) return;
+    me.picks.push({ id: null, name: "Tiden gick ut", clubs: [], club: me.clubs[me.picks.length] });
+    $("player").value = "";
+    if (me.picks.length >= 5) finishTeam();
+    show(); renderAll(); startTimer();
+    if (state.phase === "play") { setMsg("Tiden gick ut. Nästa klubb.", "err"); $("player").focus(); } else setMsg("", "");
+  }
+
+  // Spelare (efter spelar-ID) som varje deltagare redan har använt i tidigare omgångar med samma grupp.
+  // Nollställs när man startar med nya spelare. Varje deltagare har sin egen lista.
+  var usedBy = {};
+  function usedKey(name) { return String(name).trim().toLowerCase(); }
+
+  function startGame(names, keepHistory) {
+    if (!keepHistory) usedBy = {};
+    savedNames = names.slice();
+    var recent = readRecent(), use = {}, dealt = [];
+    var own = names.length > 1 && $("clubmode").value === "own";
+    var shared = own ? null : pickFive(use, recent);
+    state.players = names.map(function (n) {
+      var cl = own ? pickFive(use, recent) : shared;
+      cl.forEach(function (c) { use[c] = (use[c] || 0) + 1; if (dealt.indexOf(c) < 0) dealt.push(c); });
+      return { name: n, picks: [], clubs: cl, prior: (usedBy[usedKey(n)] || []).slice() };
+    });
+    writeRecent(dealt.concat(recent.filter(function (c) { return dealt.indexOf(c) < 0; })));
+    state.cur = 0; state.sel = 0; state.phase = "play"; state.busy = false;
+    $("player").value = ""; setMsg("", "");
+    show(); renderAll(); startTimer();
+    $("player").focus();
+  }
+
+  $("count").addEventListener("change", buildNames);
+  $("start").addEventListener("click", function () { startGame(readNames()); });
+  $("again").addEventListener("click", function () { startGame(state.players.map(function (p) { return p.name; }), true); });
+  $("fresh").addEventListener("click", function () {
+    state.phase = "setup"; show();
+    $("count").value = String(state.players.length || 2);
+    buildNames();
+  });
+  $("next").addEventListener("click", function () {
+    state.cur += 1; state.phase = "play";
+    $("player").value = ""; setMsg("", "");
+    show(); renderAll(); startTimer();
+    $("player").focus();
+  });
+
+  /* ---------- Uppslagning (data från github.com/salimt/football-datasets) ---------- */
+  // Transfermarkt-ID för de 20 quizklubbarna.
+  var CLUB_IDS = {"Manchester United":985,"Manchester City":281,"Liverpool":31,"Chelsea":631,"Arsenal":11,"Tottenham Hotspur":148,
+    "Newcastle United":762,"Everton":29,"West Ham United":379,"Aston Villa":405,"Leicester City":1003,"Leeds United":399,
+    "Real Madrid":418,"FC Barcelona":131,"Atlético Madrid":13,"Sevilla":368,"Valencia":1049,"Villarreal":1050,"Real Sociedad":681,"Athletic Bilbao":621,"Real Betis":150,
+    "Juventus":506,"AC Milan":5,"Inter":46,"Napoli":6195,"AS Roma":12,"Lazio":398,"Atalanta":800,"Fiorentina":430,
+    "Bayern München":27,"Borussia Dortmund":16,"Bayer Leverkusen":15,"RB Leipzig":23826,"Schalke 04":33,"VfL Wolfsburg":82,"Borussia Mönchengladbach":18,"Eintracht Frankfurt":24,"Werder Bremen":86,
+    "Paris Saint-Germain":583,"Olympique de Marseille":244,"Olympique Lyonnais":1041,"AS Monaco":162,"Lille":1082,
+    "Ajax":610,"Benfica":294,"FC Porto":720};
+  var DB = null;          // { players, clubNames, quizIdx, byClub, nn }
+  var THR = 0.75;
+
+  function loadData() {
+    return fetch("players.json").then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    }).then(function (d) {
+      var idxById = {};
+      d.clubIds.forEach(function (id, i) { idxById[id] = i; });
+      var quizIdx = {}, byClub = {};
+      CLUBS.forEach(function (name) {
+        var i = idxById[CLUB_IDS[name]];
+        if (i == null) return;
+        quizIdx[name] = i; byClub[i] = [];
+        d.clubNames[i] = name; // visningsnamn som i spelet
+      });
+      d.players.forEach(function (p, pi) {
+        p[2].forEach(function (ci) { if (byClub[ci]) byClub[ci].push(pi); });
+      });
+      DB = { players: d.players, clubNames: d.clubNames, quizIdx: quizIdx, byClub: byClub, nn: new Array(d.players.length) };
+    });
+  }
+
+  function tokens(s) {
+    return String(s).toLowerCase().replace(/ß/g, "ss").replace(/æ/g, "ae").replace(/œ/g, "oe")
+      .replace(/ø/g, "o").replace(/đ/g, "d").replace(/ł/g, "l").replace(/ð/g, "d").replace(/þ/g, "th")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim()
+      .split(" ").filter(Boolean);
+  }
+  // Redigeringsavstånd med transpositioner (osa); returnerar max+1 om avståndet överstiger max.
+  function dist(a, b, max) {
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > max) return max + 1;
+    var p2 = new Array(lb + 1), p1 = new Array(lb + 1), c = new Array(lb + 1), i, j;
+    for (j = 0; j <= lb; j++) p1[j] = j;
+    for (i = 1; i <= la; i++) {
+      c[0] = i; var rowMin = i;
+      for (j = 1; j <= lb; j++) {
+        var cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+        var v = Math.min(p1[j] + 1, c[j - 1] + 1, p1[j - 1] + cost);
+        if (i > 1 && j > 1 && a.charCodeAt(i - 1) === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) v = Math.min(v, p2[j - 2] + 1);
+        c[j] = v; if (v < rowMin) rowMin = v;
+      }
+      if (rowMin > max) return max + 1;
+      var t = p2; p2 = p1; p1 = c; c = t;
+    }
+    return p1[lb];
+  }
+  function sim(a, b) {
+    if (a === b) return 1;
+    var m = Math.max(a.length, b.length);
+    var d = dist(a, b, Math.ceil(m * 0.34));
+    return Math.max(0, 1 - d / m);
+  }
+  function scorePlayer(qt, qf, pi) {
+    var nt = DB.nn[pi];
+    if (!nt) { nt = DB.nn[pi] = tokens(DB.players[pi][1]); nt.full = nt.join(" "); }
+    var full = sim(qf, nt.full);
+    var sum = 0, worst = 1;
+    for (var i = 0; i < qt.length; i++) {
+      var best = 0;
+      for (var j = 0; j < nt.length; j++) {
+        var s = sim(qt[i], nt[j]);
+        // Förkortningar och smeknamn ("Mo Salah", "C Ronaldo") när fler namndelar anges.
+        if (s < 0.8 && (qt.length > 1 || qt[i].length >= 4) && nt[j].indexOf(qt[i]) === 0) s = 0.8;
+        if (s > best) best = s;
+      }
+      sum += best; if (best < worst) worst = best;
+    }
+    // Flera namndelar: varje del måste stämma hyfsat (rätt förnamn men fel efternamn räcker inte).
+    var tok = (qt.length > 1 && worst < 0.6) ? 0 : sum / qt.length - 0.02 * Math.max(0, nt.length - qt.length);
+    return Math.max(full, tok);
+  }
+  // Bästa träffen bland kandidaterna; vid nästan lika bra träffar vinner den mest kända spelaren.
+  function bestMatch(qt, qf, list) {
+    var scores = [], top = 0, i, s;
+    for (i = 0; i < list.length; i++) {
+      s = scorePlayer(qt, qf, list[i]); scores.push(s); if (s > top) top = s;
+    }
+    if (top < THR) return { score: top, pi: -1 };
+    for (i = 0; i < list.length; i++) if (scores[i] >= top - 0.03) return { score: top, pi: list[i] };
+    return { score: top, pi: -1 };
+  }
+  function allIdx() {
+    if (!DB.all) { DB.all = []; for (var i = 0; i < DB.players.length; i++) DB.all.push(i); }
+    return DB.all;
+  }
+
+  // Svarar { found, id, name, played, clubs } som tidigare, men från datasetet.
+  function lookup(input, club) {
+    var qt = tokens(input), qf = qt.join(" ");
+    if (!qf) return { found: false };
+    var ci = DB.quizIdx[club];
+    var inClub = bestMatch(qt, qf, DB.byClub[ci] || []);
+    var hit = inClub;
+    if (inClub.score < 0.95) {
+      var any = bestMatch(qt, qf, allIdx());
+      if (any.pi >= 0 && (inClub.pi < 0 || any.score > inClub.score + 0.1)) hit = any;
+    }
+    if (hit.pi < 0) return { found: false };
+    var p = DB.players[hit.pi];
+    return {
+      found: true, id: p[0], name: p[1],
+      played: p[2].indexOf(ci) >= 0,
+      clubs: p[2].map(function (c) { return DB.clubNames[c]; })
+    };
+  }
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var me = state.players[state.cur];
+    if (state.phase !== "play" || state.busy || !me || me.picks.length >= 5) return;
+    var input = $("player").value.trim();
+    if (!input) return;
+    if (!DB) { setMsg("Spelardatan laddas fortfarande. Försök igen om en stund.", "busy"); return; }
+    var club = me.clubs[me.picks.length];
+    var a = lookup(input, club);
+    if (!a.found) { setMsg("Hittade ingen spelare som matchar \"" + input + "\". Försök igen.", "err"); return; }
+    if (me.picks.some(function (p) { return p.id === a.id; })) { setMsg(a.name + " är redan i ditt lag. Välj någon annan.", "err"); return; }
+    if (me.prior.indexOf(a.id) >= 0) { setMsg(a.name + " har du använt i en tidigare omgång. Välj någon annan.", "err"); return; }
+    if (!a.played) { setMsg(a.name + " har inte spelat i " + club + "s A-lag. Försök med någon annan.", "err"); return; }
+    me.picks.push({ id: a.id, name: a.name, clubs: a.clubs, club: club });
+    (usedBy[usedKey(me.name)] = usedBy[usedKey(me.name)] || []).push(a.id);
+    $("player").value = ""; setMsg("", "");
+    if (me.picks.length >= 5) finishTeam();
+    show(); renderAll(); startTimer();
+    if (state.phase === "play") $("player").focus();
+  });
+
+  function finishTeam() {
+    if (state.cur >= state.players.length - 1) {
+      state.phase = "results";
+      var best = 0, bi = 0;
+      state.players.forEach(function (p, i) { if (tot(p) > best) { best = tot(p); bi = i; } });
+      state.sel = bi;
+      try {
+        var prev = parseInt(localStorage.getItem("femmanalaget-best") || "0", 10) || 0;
+        if (best > prev) localStorage.setItem("femmanalaget-best", String(best));
+      } catch (e) { /* ignore */ }
+    } else {
+      state.phase = "between";
+    }
+  }
+
+  /* ---------- Vyer ---------- */
+  function show() {
+    var ph = state.phase;
+    if (ph !== "play") stopTimer();
+    $("setup").hidden = ph !== "setup";
+    $("game").hidden = ph === "setup";
+    $("playBox").hidden = ph !== "play";
+    $("betweenBox").hidden = ph !== "between";
+    $("resultsBox").hidden = ph !== "results";
+  }
+
+  function ranking() {
+    return state.players.map(function (p, i) { return { i: i, p: p, t: tot(p) }; })
+      .sort(function (a, b) { return b.t - a.t || a.i - b.i; });
+  }
+  function boardRows(ol, rows, selectable) {
+    clear(ol);
+    var topScore = rows.length ? rows[0].t : 0;
+    var rank = 0, last = null;
+    rows.forEach(function (r, idx) {
+      if (r.t !== last) { rank = idx + 1; last = r.t; }
+      var li = document.createElement("li");
+      var b = el("button", "rowbtn" + (r.t === topScore && selectable ? " top" : ""));
+      b.type = "button";
+      b.appendChild(el("span", "rank", String(rank)));
+      b.appendChild(el("span", "rname", r.p.name));
+      b.appendChild(el("span", "rscore", String(r.t)));
+      if (selectable) {
+        b.setAttribute("aria-pressed", state.sel === r.i ? "true" : "false");
+        b.addEventListener("click", function () { state.sel = r.i; renderAll(); });
+      } else {
+        b.disabled = true; b.style.cursor = "default"; b.style.opacity = "1";
+      }
+      li.appendChild(b); ol.appendChild(li);
+    });
+  }
+
+  function shown() { return state.players[state.phase === "results" ? state.sel : state.cur]; }
+
+  function renderAll() {
+    var ph = state.phase;
+    var p = shown();
+    if (!p) return;
+
+    if (ph === "play") {
+      var n = p.picks.length;
+      var multi = state.players.length > 1;
+      $("roundLabel").textContent = (multi ? p.name + " · " : "") + "spelare " + Math.min(n + 1, 5) + " av 5";
+      $("clubName").textContent = p.clubs[Math.min(n, 4)];
+    }
+
+    if (ph === "between") {
+      var next = state.players[state.cur + 1];
+      $("betweenScore").textContent = p.name + ": " + tot(p) + " poäng";
+      $("betweenText").textContent = "Lämna över enheten till " + next.name + ".";
+      $("next").textContent = "Nästa: " + next.name;
+      boardRows($("standings"), ranking(), false);
+    }
+
+    if (ph === "results") {
+      var rows = ranking();
+      var topScore = rows[0].t;
+      var winners = rows.filter(function (r) { return r.t === topScore; });
+      if (state.players.length === 1) {
+        $("winner").textContent = topScore + " poäng";
+        var b = null;
+        try { b = parseInt(localStorage.getItem("femmanalaget-best") || "0", 10) || 0; } catch (e) { b = null; }
+        $("winnerNote").textContent = b ? "Ditt bästa hittills: " + b : "";
+      } else if (winners.length === 1) {
+        $("winner").textContent = winners[0].p.name + " vinner";
+        $("winnerNote").textContent = topScore + " poäng.";
+      } else {
+        $("winner").textContent = "Delad seger";
+        $("winnerNote").textContent = winners.map(function (w) { return w.p.name; }).join(", ") + " har " + topScore + " poäng vardera.";
+      }
+      boardRows($("leaderboard"), rows, true);
+    }
+
+    $("totalLabel").textContent = state.players.length > 1 ? "Totalt, " + p.name : "Totalt";
+    $("total").textContent = String(tot(p));
+    $("pitchOwner").textContent = state.players.length > 1 ? p.name : "";
+
+    var ul = $("picks"); clear(ul);
+    p.picks.forEach(function (pk) {
+      var li = el("li", "pick");
+      var head = el("div", "pick-head");
+      head.appendChild(el("span", "pick-name", pk.name));
+      head.appendChild(el("span", "pick-pts", lag(pk.clubs.length)));
+      li.appendChild(head);
+      var chips = el("div", "chips");
+      pk.clubs.forEach(function (c) {
+        chips.appendChild(el("span", "chip" + (norm(c) === norm(pk.club) ? " hit" : ""), c));
+      });
+      li.appendChild(chips); ul.appendChild(li);
+    });
+    drawPitch(p);
+  }
+
+  /* ---------- Plan ---------- */
+  function svg(tag, attrs, text) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function drawPitch(p) {
+    var s = $("pitch"); clear(s);
+    var W = 360, H = 500;
+    for (var i = 0; i < 10; i++) {
+      s.appendChild(svg("rect", { x: 0, y: i * 50, width: W, height: 50, fill: i % 2 ? "var(--pitch-b)" : "var(--pitch-a)" }));
+    }
+    var ln = { fill: "none", stroke: "rgba(255,255,255,.8)", "stroke-width": 2 };
+    s.appendChild(svg("rect", Object.assign({ x: 14, y: 14, width: W - 28, height: H - 28 }, ln)));
+    s.appendChild(svg("line", Object.assign({ x1: 14, y1: 250, x2: W - 14, y2: 250 }, ln)));
+    s.appendChild(svg("circle", Object.assign({ cx: 180, cy: 250, r: 42 }, ln)));
+    s.appendChild(svg("rect", Object.assign({ x: 80, y: 14, width: 200, height: 70 }, ln)));
+    s.appendChild(svg("rect", Object.assign({ x: 80, y: H - 84, width: 200, height: 70 }, ln)));
+    s.appendChild(svg("rect", Object.assign({ x: 140, y: 14, width: 80, height: 26 }, ln)));
+    s.appendChild(svg("rect", Object.assign({ x: 140, y: H - 40, width: 80, height: 26 }, ln)));
+
+    SLOTS.forEach(function (slot, i) {
+      var pk = p.picks[i];
+      var g = svg("g", {});
+      if (!pk) {
+        g.appendChild(svg("circle", { cx: slot.x, cy: slot.y, r: 24, fill: "rgba(0,0,0,.18)", stroke: "rgba(255,255,255,.7)", "stroke-width": 2, "stroke-dasharray": "5 4" }));
+        g.appendChild(svg("text", { x: slot.x, y: slot.y + 5, "text-anchor": "middle", "font-size": 15, "font-family": "Inter, sans-serif", fill: "rgba(255,255,255,.85)", "font-weight": 600 }, String(i + 1)));
+      } else {
+        g.appendChild(svg("circle", { cx: slot.x, cy: slot.y, r: 25, fill: "#ffffff", stroke: "rgba(0,0,0,.35)", "stroke-width": 2 }));
+        g.appendChild(svg("text", { x: slot.x, y: slot.y + 9, "text-anchor": "middle", "font-size": 26, "font-weight": 700, "font-family": "Barlow Condensed, Arial Narrow, sans-serif", fill: "#0b3d1d" }, String(pk.clubs.length)));
+        var short = pk.name.length > 18 ? pk.name.slice(0, 17) + "…" : pk.name;
+        g.appendChild(svg("text", { x: slot.x, y: slot.y + 44, "text-anchor": "middle", "font-size": 13, "font-weight": 600, "font-family": "Inter, sans-serif", fill: "#ffffff", stroke: "rgba(0,0,0,.55)", "stroke-width": 3, "paint-order": "stroke" }, short));
+        g.appendChild(svg("text", { x: slot.x, y: slot.y + 59, "text-anchor": "middle", "font-size": 11, "font-family": "Inter, sans-serif", fill: "#ffffff", stroke: "rgba(0,0,0,.55)", "stroke-width": 3, "paint-order": "stroke" }, lag(pk.clubs.length)));
+      }
+      s.appendChild(g);
+    });
+  }
+
+  /* ---------- Start ---------- */
+  window.addEventListener("hashchange", function () {
+    // Lämnar man spelet börjar det om från startvyn, så att timern inte rullar i bakgrunden.
+    if (location.hash !== "#femmanalaget") { state.phase = "setup"; show(); }
+  });
+  buildCount(); buildNames(); show();
+  var ready = loadData();
+  ready.catch(function () { $("notice").hidden = false; });
+  // Delas med övriga spel på sidan (samma data och samma toleranta namnsökning).
+  window.FS = { ready: ready, get DB() { return DB; }, tokens: tokens, bestMatch: bestMatch, allIdx: allIdx, pickN: pickFive, THR: THR, lookupClub: lookup };
+})();
+</script>
+
+<script>
+(function () {
+  var FS = window.FS;
+  var $ = function (id) { return document.getElementById(id); };
+  var Q = 5, QUESTION_MS = 30000, FALLBACK = ["Ajax", "Manchester United", "Paris Saint-Germain"];
+  var state = { phase: "setup", players: [], cur: 0, sel: 0 };
+  var saved = [], timerId = null, deadline = 0;
+
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function clear(n) { n.textContent = ""; }
+  function tot(p) { return p.picks.reduce(function (s, x) { return s + x.pts; }, 0); }
+  function poang(n) { return n + (n === 1 ? " poäng" : " poäng"); }
+  function setMsg(text, cls) { var m = $("t3-msg"); m.textContent = text; m.className = "msg" + (cls ? " " + cls : ""); }
+  function readRecent() {
+    try { var r = JSON.parse(localStorage.getItem("tre-klubbar-recent") || "[]"); return Array.isArray(r) ? r : []; } catch (e) { return []; }
+  }
+  function writeRecent(list) { try { localStorage.setItem("tre-klubbar-recent", JSON.stringify(list.slice(0, 12))); } catch (e) { /* ignore */ } }
+
+  /* ---------- Inställningar ---------- */
+  function buildCount() {
+    var s = $("t3-count");
+    for (var i = 1; i <= 8; i++) { var o = document.createElement("option"); o.value = i; o.textContent = i; s.appendChild(o); }
+    s.value = "2";
+  }
+  function buildNames() {
+    var n = parseInt($("t3-count").value, 10) || 1, box = $("t3-names"), old = [];
+    Array.prototype.forEach.call(box.querySelectorAll("input"), function (inp) { old.push(inp.value); });
+    clear(box);
+    $("t3-modeBox").hidden = n < 2;
+    for (var i = 0; i < n; i++) {
+      var wrap = el("div", "name-field");
+      var lab = el("label", null, n === 1 ? "Ditt namn" : "Namn, spelare " + (i + 1));
+      lab.setAttribute("for", "t3-name" + i);
+      var inp = document.createElement("input");
+      inp.type = "text"; inp.id = "t3-name" + i; inp.maxLength = 24; inp.autocomplete = "off";
+      inp.placeholder = "Spelare " + (i + 1);
+      inp.value = old[i] != null ? old[i] : (saved[i] || "");
+      wrap.appendChild(lab); wrap.appendChild(inp); box.appendChild(wrap);
+    }
+  }
+  function readNames() {
+    var out = [], n = parseInt($("t3-count").value, 10) || 1;
+    for (var i = 0; i < n; i++) out.push(($("t3-name" + i).value || "").trim() || "Spelare " + (i + 1));
+    return out;
+  }
+
+  /* ---------- Klubbar: tre per fråga, minst en spelare har spelat i alla tre ---------- */
+  function clubSet(name) {
+    var DB = FS.DB; DB.t3sets = DB.t3sets || {};
+    if (!DB.t3sets[name]) DB.t3sets[name] = new Set(DB.byClub[DB.quizIdx[name]] || []);
+    return DB.t3sets[name];
+  }
+  function commonCount(t) {
+    var a = clubSet(t[0]), b = clubSet(t[1]), c = clubSet(t[2]), n = 0;
+    a.forEach(function (pi) { if (b.has(pi) && c.has(pi)) n++; });
+    return n;
+  }
+  function makeTriple(use, recent, taken) {
+    for (var i = 0; i < 600; i++) {
+      var t = FS.pickN(use, recent, 3), key = t.slice().sort().join("|");
+      if (taken[key]) continue;
+      if (commonCount(t) >= 1) { taken[key] = 1; return t; }
+    }
+    return FALLBACK.slice();
+  }
+  // Delas med onlineläget: fem trior med minst en gemensam spelare, utan upprepningar.
+  FS.lookupTriple = lookup;
+  FS.makeTriples = function () {
+    var use = {}, taken = {}, out = [], recent = [];
+    for (var q = 0; q < Q; q++) {
+      var t = makeTriple(use, recent, taken);
+      t.forEach(function (c) { use[c] = (use[c] || 0) + 1; });
+      out.push(t);
+    }
+    return out;
+  };
+
+  function startGame(names) {
+    saved = names.slice();
+    var recent = readRecent(), use = {}, dealt = [], taken = {};
+    var own = names.length > 1 && $("t3-clubmode").value === "own";
+    function makeSet() {
+      var set = [];
+      for (var q = 0; q < Q; q++) {
+        var t = makeTriple(use, recent, taken);
+        t.forEach(function (c) { use[c] = (use[c] || 0) + 1; if (dealt.indexOf(c) < 0) dealt.push(c); });
+        set.push(t);
+      }
+      return set;
+    }
+    var shared = own ? null : makeSet();
+    state.players = names.map(function (n) { return { name: n, picks: [], sets: own ? makeSet() : shared }; });
+    writeRecent(dealt.concat(recent.filter(function (c) { return dealt.indexOf(c) < 0; })));
+    state.cur = 0; state.sel = 0; state.phase = "play";
+    $("t3-player").value = ""; setMsg("", "");
+    show(); renderAll(); startTimer();
+    $("t3-player").focus();
+  }
+
+  $("t3-count").addEventListener("change", buildNames);
+  $("t3-start").addEventListener("click", function () {
+    var names = readNames();
+    FS.ready.then(function () { if (FS.DB) startGame(names); }).catch(function () { /* meddelande visas redan */ });
+  });
+  $("t3-again").addEventListener("click", function () { startGame(state.players.map(function (p) { return p.name; })); });
+  $("t3-fresh").addEventListener("click", function () {
+    state.phase = "setup"; show();
+    $("t3-count").value = String(state.players.length || 2);
+    buildNames();
+  });
+  $("t3-next").addEventListener("click", function () {
+    state.cur += 1; state.phase = "play";
+    $("t3-player").value = ""; setMsg("", "");
+    show(); renderAll(); startTimer();
+    $("t3-player").focus();
+  });
+
+  /* ---------- Timer ---------- */
+  function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } }
+  function drawTimer() {
+    var left = Math.max(0, deadline - Date.now());
+    $("t3-timerFill").style.width = (left / QUESTION_MS * 100) + "%";
+    $("t3-timerNum").textContent = String(Math.ceil(left / 1000));
+    $("t3-timer").classList.toggle("low", left <= 10000);
+    return left;
+  }
+  function startTimer() {
+    stopTimer();
+    if (state.phase !== "play") return;
+    deadline = Date.now() + QUESTION_MS;
+    drawTimer();
+    timerId = setInterval(function () { if (drawTimer() <= 0) onTimeout(); }, 100);
+  }
+  function advance() {
+    var me = state.players[state.cur];
+    if (me.picks.length >= Q) {
+      if (state.cur >= state.players.length - 1) {
+        state.phase = "results";
+        var best = 0, bi = 0;
+        state.players.forEach(function (p, i) { if (tot(p) > best) { best = tot(p); bi = i; } });
+        state.sel = bi;
+      } else state.phase = "between";
+    }
+    show(); renderAll(); startTimer();
+  }
+  function onTimeout() {
+    stopTimer();
+    var me = state.players[state.cur];
+    if (state.phase !== "play" || !me) return;
+    me.picks.push({ id: null, name: "Tiden gick ut", pts: 0, clubs: me.sets[me.picks.length], hits: [false, false, false] });
+    $("t3-player").value = "";
+    advance();
+    if (state.phase === "play") { setMsg("Tiden gick ut. Nästa fråga.", "err"); $("t3-player").focus(); } else setMsg("", "");
+  }
+
+  /* ---------- Uppslagning ---------- */
+  function lookup(input, triple) {
+    var DB = FS.DB, qt = FS.tokens(input), qf = qt.join(" ");
+    if (!qf) return { found: false };
+    var idx = triple.map(function (c) { return DB.quizIdx[c]; });
+    var seen = {}, cand = [];
+    idx.forEach(function (ci) { (DB.byClub[ci] || []).forEach(function (pi) { if (!seen[pi]) { seen[pi] = 1; cand.push(pi); } }); });
+    cand.sort(function (a, b) { return a - b; }); // lägre index = mer känd spelare vid lika träff
+    var inClubs = FS.bestMatch(qt, qf, cand), hit = inClubs;
+    if (inClubs.score < 0.95) {
+      var any = FS.bestMatch(qt, qf, FS.allIdx());
+      if (any.pi >= 0 && (inClubs.pi < 0 || any.score > inClubs.score + 0.1)) hit = any;
+    }
+    if (hit.pi < 0) return { found: false };
+    var p = DB.players[hit.pi];
+    var hits = idx.map(function (ci) { return p[2].indexOf(ci) >= 0; });
+    return { found: true, id: p[0], name: p[1], hits: hits, pts: hits.filter(Boolean).length };
+  }
+
+  $("t3-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var me = state.players[state.cur];
+    if (state.phase !== "play" || !me || me.picks.length >= Q || !FS.DB) return;
+    var input = $("t3-player").value.trim();
+    if (!input) return;
+    var triple = me.sets[me.picks.length];
+    var a = lookup(input, triple);
+    if (!a.found) { setMsg("Hittade ingen spelare som matchar \"" + input + "\". Försök igen.", "err"); return; }
+    if (me.picks.some(function (p) { return p.id === a.id; })) { setMsg(a.name + " har du redan använt. Välj någon annan.", "err"); return; }
+    if (a.pts === 0) { setMsg(a.name + " har inte spelat i någon av klubbarna. Försök med någon annan.", "err"); return; }
+    me.picks.push({ id: a.id, name: a.name, pts: a.pts, clubs: triple, hits: a.hits });
+    $("t3-player").value = "";
+    advance();
+    if (state.phase === "play") { setMsg(a.name + ": " + poang(a.pts) + ".", "ok"); $("t3-player").focus(); } else setMsg("", "");
+  });
+
+  /* ---------- Vyer ---------- */
+  function show() {
+    var ph = state.phase;
+    if (ph !== "play") stopTimer();
+    $("t3-setup").hidden = ph !== "setup";
+    $("t3-game").hidden = ph === "setup";
+    $("t3-playBox").hidden = ph !== "play";
+    $("t3-betweenBox").hidden = ph !== "between";
+    $("t3-resultsBox").hidden = ph !== "results";
+  }
+  function ranking() {
+    return state.players.map(function (p, i) { return { i: i, p: p, t: tot(p) }; })
+      .sort(function (a, b) { return b.t - a.t || a.i - b.i; });
+  }
+  function boardRows(ol, rows, selectable) {
+    clear(ol);
+    var topScore = rows.length ? rows[0].t : 0, rank = 0, last = null;
+    rows.forEach(function (r, idx) {
+      if (r.t !== last) { rank = idx + 1; last = r.t; }
+      var li = document.createElement("li");
+      var b = el("button", "rowbtn" + (r.t === topScore && selectable ? " top" : ""));
+      b.type = "button";
+      b.appendChild(el("span", "rank", String(rank)));
+      b.appendChild(el("span", "rname", r.p.name));
+      b.appendChild(el("span", "rscore", String(r.t)));
+      if (selectable) {
+        b.setAttribute("aria-pressed", state.sel === r.i ? "true" : "false");
+        b.addEventListener("click", function () { state.sel = r.i; renderAll(); });
+      } else { b.disabled = true; b.style.cursor = "default"; b.style.opacity = "1"; }
+      li.appendChild(b); ol.appendChild(li);
+    });
+  }
+  function renderAll() {
+    var ph = state.phase, p = state.players[ph === "results" ? state.sel : state.cur];
+    if (!p) return;
+    if (ph === "play") {
+      var n = p.picks.length, multi = state.players.length > 1;
+      $("t3-roundLabel").textContent = (multi ? p.name + " · " : "") + "fråga " + Math.min(n + 1, Q) + " av " + Q;
+      var box = $("t3-clubs"); clear(box);
+      p.sets[Math.min(n, Q - 1)].forEach(function (c) { box.appendChild(el("div", "t3-club", c)); });
+    }
+    if (ph === "between") {
+      var next = state.players[state.cur + 1];
+      $("t3-betweenScore").textContent = p.name + ": " + tot(p) + " poäng";
+      $("t3-betweenText").textContent = "Lämna över enheten till " + next.name + ".";
+      $("t3-next").textContent = "Nästa: " + next.name;
+      boardRows($("t3-standings"), ranking(), false);
+    }
+    if (ph === "results") {
+      var rows = ranking(), topScore = rows[0].t;
+      var winners = rows.filter(function (r) { return r.t === topScore; });
+      if (state.players.length === 1) { $("t3-winner").textContent = topScore + " poäng"; $("t3-winnerNote").textContent = "Max är " + (Q * 3) + " poäng."; }
+      else if (winners.length === 1) { $("t3-winner").textContent = winners[0].p.name + " vinner"; $("t3-winnerNote").textContent = topScore + " poäng."; }
+      else { $("t3-winner").textContent = "Delad seger"; $("t3-winnerNote").textContent = winners.map(function (w) { return w.p.name; }).join(", ") + " har " + topScore + " poäng vardera."; }
+      boardRows($("t3-leaderboard"), rows, true);
+    }
+    $("t3-totalLabel").textContent = state.players.length > 1 ? "Totalt, " + p.name : "Totalt";
+    $("t3-total").textContent = String(tot(p));
+    var ul = $("t3-picks"); clear(ul);
+    p.picks.forEach(function (pk) {
+      var li = el("li", "pick"), head = el("div", "pick-head");
+      head.appendChild(el("span", "pick-name", pk.name));
+      head.appendChild(el("span", "pick-pts", poang(pk.pts)));
+      li.appendChild(head);
+      var chips = el("div", "chips");
+      pk.clubs.forEach(function (c, i) { chips.appendChild(el("span", "chip " + (pk.hits[i] ? "hit" : "miss"), c)); });
+      li.appendChild(chips); ul.appendChild(li);
+    });
+  }
+
+  window.addEventListener("hashchange", function () {
+    // Lämnar man spelet börjar det om från startvyn, så att timern inte rullar i bakgrunden.
+    if (location.hash !== "#tre-klubbar") { state.phase = "setup"; show(); }
+  });
+  buildCount(); buildNames(); show();
+  FS.ready.catch(function () { $("t3-notice").hidden = false; });
+})();
+</script>
+
+<script>
+(function () {
+  var FS = window.FS, CFG = window.FS_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var AVAILABLE = !!(CFG.mock || (CFG.supabaseUrl && CFG.supabaseKey));
+  var SUPA_SRC = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
+  var MINP = 2, MAXP = 8, Q = 5, INTRO_MS = 2500, QMS = CFG.questionMs || 30000;
+  var ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  var GAMES = {
+    "femmanalaget": { title: "Femmanalaget online", offline: "#femmanalaget",
+      lede: "Alla får samma klubb samtidigt. Skriv en spelare som har spelat i klubben och få ett poäng för varje klubb han har spelat i. Efter varje fråga ser ni allas svar. Alla klickar Redo för att gå vidare." },
+    "tre-klubbar": { title: "Tre klubbar online", offline: "#tre-klubbar",
+      lede: "Alla får samma tre klubbar samtidigt. Skriv en spelare och få ett poäng för varje klubb han har spelat i. Efter varje fråga ser ni allas svar." }
+  };
+
+  var gameKey = null, net = null, isHost = false, joined = false, S = null, cur = {}, offset = 0, presence = [];
+  var mine = [], usedPrior = [], myRound = 0, answeredQ = -1, lastQ = -1, pendingAns = null, selPid = null;
+  var starting = false, localReady = "", lastReadyResend = 0;
+  var hbTimer = null, hostTimer = null, tickTimer = null, hostGoneTimer = null, joinTimer = null, helloSent = false, lastResend = 0;
+
+  function rnd(n) { var s = ""; for (var i = 0; i < n; i++) s += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length)); return s; }
+  var me = { pid: (function () { try { var p = sessionStorage.getItem("fs-pid"); if (!p) { p = rnd(12); sessionStorage.setItem("fs-pid", p); } return p; } catch (e) { return rnd(12); } })() };
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function clear(n) { n.textContent = ""; }
+  function poang(n) { return n + " poäng"; }
+  function setMsg(text, cls) { var m = $("ol-msg"); m.textContent = text; m.className = "msg" + (cls ? " " + cls : ""); }
+  function menuMsg(text, cls) { var m = $("ol-menuMsg"); m.textContent = text; m.className = "msg" + (cls ? " " + cls : ""); }
+  function readName() { return ($("ol-name").value || "").trim().slice(0, 20); }
+
+  /* ---------- Transport: Supabase Realtime (broadcast + presence), eller testtransport ---------- */
+  function loadLib() {
+    return new Promise(function (res, rej) {
+      if (window.supabase) return res();
+      var s = document.createElement("script");
+      s.src = SUPA_SRC; s.onload = function () { res(); }; s.onerror = function () { rej(new Error("lib")); };
+      document.head.appendChild(s);
+    });
+  }
+  function openSupabase(code, meta, h) {
+    return loadLib().then(function () {
+      return new Promise(function (resolve, reject) {
+        var client = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey);
+        var ch = client.channel("fs-" + code, { config: { broadcast: { self: false }, presence: { key: meta.pid } } });
+        var done = false;
+        ch.on("broadcast", { event: "m" }, function (m) { h.onMessage(m.payload); });
+        ch.on("presence", { event: "sync" }, function () {
+          var st = ch.presenceState(), list = [];
+          Object.keys(st).forEach(function (k) { if (st[k] && st[k][0]) list.push(st[k][0]); });
+          h.onPresence(list);
+        });
+        ch.subscribe(function (status) {
+          if (status === "SUBSCRIBED" && !done) {
+            done = true; ch.track(meta);
+            resolve({
+              send: function (p) { ch.send({ type: "broadcast", event: "m", payload: p }); },
+              leave: function () { try { ch.untrack(); client.removeChannel(ch); } catch (e) { /* ignore */ } }
+            });
+          } else if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && !done) { done = true; reject(new Error(status)); }
+        });
+      });
+    });
+  }
+  // Testtransport för flera flikar i samma webbläsare (aktiveras med FS_CONFIG.mock).
+  function openMock(code, meta, h) {
+    return new Promise(function (resolve) {
+      var bc = new BroadcastChannel("fs-mock-" + code), peers = {};
+      function emit() {
+        var now = Date.now(), list = [];
+        Object.keys(peers).forEach(function (k) { if (now - peers[k].seen > 2500) delete peers[k]; else list.push(peers[k].meta); });
+        h.onPresence(list);
+      }
+      function beat() { peers[meta.pid] = { meta: meta, seen: Date.now() }; bc.postMessage({ k: "hb", meta: meta }); }
+      bc.onmessage = function (e) {
+        var d = e.data;
+        if (d.k === "hb") { var isNew = !peers[d.meta.pid]; peers[d.meta.pid] = { meta: d.meta, seen: Date.now() }; if (isNew) { beat(); emit(); } }
+        else if (d.k === "bye") { delete peers[d.pid]; emit(); }
+        else if (d.k === "m") h.onMessage(d.payload);
+      };
+      var iv = setInterval(function () { beat(); emit(); }, 800);
+      beat(); emit();
+      resolve({
+        send: function (p) { bc.postMessage({ k: "m", payload: JSON.parse(JSON.stringify(p)) }); },
+        leave: function () { clearInterval(iv); try { bc.postMessage({ k: "bye", pid: meta.pid }); bc.close(); } catch (e) { /* ignore */ } }
+      });
+    });
+  }
+  function openChannel(code, meta, h) { return CFG.mock ? openMock(code, meta, h) : openSupabase(code, meta, h); }
+
+  function handlers() { return { onPresence: onPresence, onMessage: onMessage }; }
+
+  /* ---------- Skapa och gå med ---------- */
+  function createMatch() {
+    var name = readName();
+    if (!name) { menuMsg("Skriv ditt namn först.", "err"); return; }
+    saveName(name); menuMsg("Skapar match…", "busy"); lockMenu(true);
+    var tries = 0;
+    (function attempt() {
+      var code = rnd(5);
+      var meta = { pid: me.pid, name: name, isHost: true, joinedAt: Date.now() };
+      presence = [];
+      openChannel(code, meta, handlers()).then(function (conn) {
+        net = conn;
+        setTimeout(function () {
+          var other = presence.filter(function (m) { return m.isHost && m.pid !== me.pid; });
+          if (other.length && tries < 3) { tries++; conn.leave(); net = null; attempt(); }
+          else if (other.length) { fail("Kunde inte skapa en unik matchkod. Försök igen."); }
+          else initHost(code);
+        }, 700);
+      }).catch(function () { fail("Kunde inte ansluta till onlinetjänsten. Kontrollera internet och inställningarna."); });
+    })();
+  }
+  function joinMatch() {
+    var name = readName();
+    var code = ($("ol-code").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!name) { menuMsg("Skriv ditt namn först.", "err"); return; }
+    if (code.length !== 5) { menuMsg("Koden har 5 tecken.", "err"); return; }
+    saveName(name); menuMsg("Ansluter…", "busy"); lockMenu(true);
+    presence = []; helloSent = false; joined = false; isHost = false; S = null;
+    var meta = { pid: me.pid, name: name, isHost: false, joinedAt: Date.now() };
+    openChannel(code, meta, handlers()).then(function (conn) {
+      net = conn;
+      joinTimer = setTimeout(function () { if (!joined) fail("Hittade ingen match med koden " + code + "."); }, 5000);
+    }).catch(function () { fail("Kunde inte ansluta till onlinetjänsten. Kontrollera internet och inställningarna."); });
+  }
+  function saveName(n) { try { localStorage.setItem("fs-name", n); } catch (e) { /* ignore */ } }
+  function lockMenu(on) { $("ol-create").disabled = on; $("ol-join").disabled = on; }
+  function fail(msg) { leave(); menuMsg(msg, "err"); }
+
+  function initHost(code) {
+    isHost = true; joined = true; offset = 0; cur = {};
+    S = { game: gameKey, code: code, round: 1, phase: "lobby", players: [], qi: 0, questions: [], deadline: 0, answered: {}, hist: {}, totals: {}, ready: {}, introUntil: 0 };
+    myRound = 1; mine = []; usedPrior = [];
+    hbTimer = setInterval(function () { if (isHost && net) net.send({ t: "state", s: S, now: Date.now() }); }, 3000);
+    hostTimer = setInterval(hostTick, 250);
+    showRoom(); hostSync();
+    startTick();
+  }
+
+  /* ---------- Värdens logik (värden äger spelets tillstånd) ---------- */
+  function broadcast() {
+    if (!isHost || !net || !S) return;
+    net.send({ t: "state", s: S, now: Date.now() });
+    render();
+  }
+  function hostSync() {
+    if (!isHost || !S) return;
+    var by = {}; presence.forEach(function (m) { by[m.pid] = m; });
+    if (S.phase === "lobby") {
+      var list = presence.slice();
+      if (!by[me.pid]) list.push({ pid: me.pid, name: readName() || "Värd", isHost: true, joinedAt: 0 });
+      list.sort(function (a, b) { return (a.joinedAt || 0) - (b.joinedAt || 0); });
+      var seen = {};
+      S.players = list.slice(0, MAXP).map(function (m) {
+        var nm = String(m.name || "Spelare").slice(0, 20), base = nm, i = 2;
+        while (seen[nm.toLowerCase()]) nm = base + " " + (i++);
+        seen[nm.toLowerCase()] = 1;
+        return { pid: m.pid, name: nm, host: !!m.isHost, on: true };
+      });
+    } else {
+      S.players.forEach(function (p) { p.on = p.pid === me.pid || !!by[p.pid]; });
+      if (S.phase === "q" && allAnswered()) toReveal();
+      else maybeAdvance();
+    }
+    if (S.phase === "lobby") maybeAdvance();
+    broadcast();
+  }
+  function allAnswered() { return S.players.filter(function (p) { return p.on; }).every(function (p) { return cur[p.pid]; }); }
+  function phaseKey() { return S.phase + ":" + S.round + ":" + S.qi; }
+  function readyAll() {
+    var on = S.players.filter(function (p) { return p.on; });
+    var need = S.phase === "reveal" ? 1 : MINP;
+    return on.length >= need && on.every(function (p) { return S.ready[p.pid]; });
+  }
+  function hostReady(pid, key) {
+    if (!isHost || !S || key !== phaseKey()) return;
+    if (!S.players.some(function (p) { return p.pid === pid; })) return;
+    S.ready[pid] = true;
+    maybeAdvance();
+    broadcast();
+  }
+  function maybeAdvance() {
+    if (!isHost || !S || !readyAll()) return;
+    if (S.phase === "lobby" || S.phase === "final") startMatch();
+    else if (S.phase === "reveal") {
+      if (S.qi + 1 < Q) startIntro(S.qi + 1);
+      else { S.phase = "final"; S.ready = {}; }
+    }
+  }
+  function startMatch() {
+    if (starting) return;
+    starting = true;
+    FS.ready.then(function () {
+      starting = false;
+      if (!isHost || !S || !FS.DB || (S.phase !== "lobby" && S.phase !== "final")) return;
+      if (S.phase === "final") {
+        if (gameKey === "femmanalaget") usedPrior = usedPrior.concat(mine);
+        mine = []; S.round += 1; myRound = S.round;
+      }
+      var qs;
+      if (gameKey === "femmanalaget") qs = FS.pickN({}, [], Q).map(function (c) { return { clubs: [c] }; });
+      else qs = FS.makeTriples().map(function (t) { return { clubs: t }; });
+      S.questions = qs; S.hist = {}; S.totals = {};
+      startIntro(0);
+      broadcast();
+    }, function () { starting = false; });
+  }
+  function startIntro(qi) {
+    cur = {}; S.answered = {}; S.qi = qi; S.phase = "intro"; S.ready = {}; S.introUntil = Date.now() + INTRO_MS;
+  }
+  function openQuestion() {
+    cur = {}; S.answered = {}; S.phase = "q"; S.ready = {}; S.deadline = Date.now() + QMS;
+    broadcast();
+  }
+  function hostAnswer(pid, q, a) {
+    if (!isHost || !S || S.phase !== "q" || q !== S.qi || cur[pid]) return;
+    if (!S.players.some(function (p) { return p.pid === pid; })) return;
+    if (!a || typeof a !== "object") return;
+    cur[pid] = {
+      id: typeof a.id === "number" ? a.id : null,
+      name: String(a.name || "").slice(0, 60),
+      pts: Math.max(0, Math.min(20, parseInt(a.pts, 10) || 0)),
+      clubs: (Array.isArray(a.clubs) ? a.clubs : []).slice(0, 25).map(function (c) { return String(c).slice(0, 40); }),
+      hits: Array.isArray(a.hits) ? a.hits.slice(0, 3).map(Boolean) : null,
+      club: a.club ? String(a.club).slice(0, 40) : null
+    };
+    S.answered[pid] = true;
+    if (allAnswered()) toReveal();
+    broadcast();
+  }
+  function toReveal() {
+    var q = S.questions[S.qi], tre = S.game === "tre-klubbar";
+    S.players.forEach(function (p) {
+      var a = cur[p.pid] || { id: null, name: p.on ? "Svarade inte" : "Frånkopplad", pts: 0, clubs: tre ? q.clubs : [], hits: tre ? [false, false, false] : null, club: q.clubs[0] };
+      (S.hist[p.pid] = S.hist[p.pid] || []).push(a);
+      S.totals[p.pid] = (S.totals[p.pid] || 0) + a.pts;
+    });
+    S.phase = "reveal"; S.deadline = 0; S.ready = {};
+  }
+  function hostTick() {
+    if (!isHost || !S) return;
+    if (S.phase === "q" && Date.now() >= S.deadline) { toReveal(); broadcast(); }
+    else if (S.phase === "intro" && Date.now() >= S.introUntil) openQuestion();
+  }
+  /* ---------- Nätverkshändelser ---------- */
+  function onPresence(list) {
+    presence = list;
+    if (isHost) { hostSync(); return; }
+    if (!net) return;
+    var hostHere = list.some(function (m) { return m.isHost; });
+    if (!joined) {
+      if (list.length > MAXP) { fail("Matchen är full."); return; }
+      if (hostHere && !helloSent) { helloSent = true; net.send({ t: "hello", pid: me.pid }); }
+      return;
+    }
+    if (!hostHere) {
+      if (!hostGoneTimer) hostGoneTimer = setTimeout(function () { hostGoneTimer = null; if (net && !isHost) { fail("Värden lämnade matchen."); } }, 6000);
+    } else if (hostGoneTimer) { clearTimeout(hostGoneTimer); hostGoneTimer = null; }
+  }
+  function onMessage(p) {
+    if (!p || typeof p !== "object") return;
+    if (p.t === "state" && !isHost) { S = p.s; offset = p.now - Date.now(); onState(); }
+    else if (p.t === "ans" && isHost) hostAnswer(p.pid, p.q, p.a);
+    else if (p.t === "ready" && isHost) hostReady(p.pid, p.k);
+    else if (p.t === "hello" && isHost) broadcast();
+  }
+  function onState() {
+    if (!S) return;
+    if (!joined) {
+      if (S.game !== gameKey) { fail("Koden gäller ett annat spel."); return; }
+      if (S.phase !== "lobby" && !S.players.some(function (p) { return p.pid === me.pid; })) { fail("Matchen har redan startat."); return; }
+      if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+      joined = true; myRound = S.round; showRoom(); startTick();
+    }
+    if (S.round !== myRound) {
+      if (gameKey === "femmanalaget") usedPrior = usedPrior.concat(mine);
+      mine = []; myRound = S.round;
+    }
+    render();
+  }
+
+  /* ---------- Svar ---------- */
+  function evaluate(input, q) {
+    var a;
+    if (gameKey === "femmanalaget") {
+      var club = q.clubs[0];
+      a = FS.lookupClub(input, club);
+      if (!a.found) return { err: "Hittade ingen spelare som matchar \"" + input + "\". Försök igen." };
+      if (mine.indexOf(a.id) >= 0) return { err: a.name + " är redan i ditt lag. Välj någon annan." };
+      if (usedPrior.indexOf(a.id) >= 0) return { err: a.name + " har du använt i en tidigare omgång. Välj någon annan." };
+      if (!a.played) return { err: a.name + " har inte spelat i " + club + "s A-lag. Försök med någon annan." };
+      return { a: { id: a.id, name: a.name, pts: a.clubs.length, clubs: a.clubs, hits: null, club: club } };
+    }
+    a = FS.lookupTriple(input, q.clubs);
+    if (!a.found) return { err: "Hittade ingen spelare som matchar \"" + input + "\". Försök igen." };
+    if (mine.indexOf(a.id) >= 0) return { err: a.name + " har du redan använt. Välj någon annan." };
+    if (a.pts === 0) return { err: a.name + " har inte spelat i någon av klubbarna. Försök med någon annan." };
+    return { a: { id: a.id, name: a.name, pts: a.pts, clubs: q.clubs, hits: a.hits, club: null } };
+  }
+  function remaining() { return S.deadline - (Date.now() + (isHost ? 0 : offset)); }
+  function submit(input) {
+    if (!S || S.phase !== "q" || answeredQ === S.qi || S.answered[me.pid] || !input) return;
+    if (remaining() <= 0) return;
+    if (!FS.DB) { setMsg("Spelardatan laddas fortfarande.", "busy"); return; }
+    var r = evaluate(input, S.questions[S.qi]);
+    if (r.err) { setMsg(r.err, "err"); return; }
+    mine.push(r.a.id); answeredQ = S.qi;
+    setMsg(r.a.name + ": " + poang(r.a.pts) + ". Väntar på de andra.", "ok");
+    if (isHost) hostAnswer(me.pid, S.qi, r.a);
+    else { pendingAns = { q: S.qi, a: r.a }; net.send({ t: "ans", pid: me.pid, q: S.qi, a: r.a }); }
+    render();
+  }
+
+  /* ---------- Vyer ---------- */
+  function showRoom() { $("ol-menu").hidden = true; $("ol-room").hidden = false; }
+  function showMenu() { $("ol-menu").hidden = false; $("ol-room").hidden = true; lockMenu(false); }
+  function startTick() { if (!tickTimer) tickTimer = setInterval(tick, 100); }
+  function myReady() { return !!S && (!!S.ready[me.pid] || localReady === phaseKey()); }
+  function sendReady() {
+    if (!S || S.phase === "q" || S.phase === "intro" || myReady()) return;
+    localReady = phaseKey();
+    if (isHost) hostReady(me.pid, localReady);
+    else { lastReadyResend = Date.now(); net.send({ t: "ready", pid: me.pid, k: localReady }); }
+    render();
+  }
+  function tick() {
+    if (!S) return;
+    if (!isHost && localReady === phaseKey() && !S.ready[me.pid] && Date.now() - lastReadyResend > 1500) {
+      lastReadyResend = Date.now(); net.send({ t: "ready", pid: me.pid, k: localReady });
+    }
+    if (S.phase !== "q") return;
+    var left = Math.max(0, remaining());
+    $("ol-timerFill").style.width = (left / QMS * 100) + "%";
+    $("ol-timerNum").textContent = String(Math.ceil(left / 1000));
+    $("ol-timer").classList.toggle("low", left <= 10000);
+    var locked = left <= 0 || answeredQ === S.qi || !!S.answered[me.pid];
+    $("ol-player").disabled = locked; $("ol-go").disabled = locked;
+    // Skicka om svaret om värden inte har kvitterat (meddelanden kan tappas).
+    if (!isHost && pendingAns && pendingAns.q === S.qi && !S.answered[me.pid] && Date.now() - lastResend > 1500) {
+      lastResend = Date.now(); net.send({ t: "ans", pid: me.pid, q: pendingAns.q, a: pendingAns.a });
+    }
+  }
+  function nameOf(pid) { var p = S.players.filter(function (x) { return x.pid === pid; })[0]; return p ? p.name : "?"; }
+  function clubCards(box, q) { clear(box); q.clubs.forEach(function (c) { box.appendChild(el("div", "t3-club", c)); }); }
+  function ranking() {
+    return S.players.map(function (p, i) { return { i: i, p: p, t: S.totals[p.pid] || 0 }; }).sort(function (a, b) { return b.t - a.t || a.i - b.i; });
+  }
+  function boardRows(ol, rows, selectable) {
+    clear(ol);
+    var top = rows.length ? rows[0].t : 0, rank = 0, last = null;
+    rows.forEach(function (r, idx) {
+      if (r.t !== last) { rank = idx + 1; last = r.t; }
+      var li = document.createElement("li");
+      var b = el("button", "rowbtn" + (r.t === top && selectable ? " top" : ""));
+      b.type = "button";
+      b.appendChild(el("span", "rank", String(rank)));
+      b.appendChild(el("span", "rname", r.p.name + (r.p.pid === me.pid ? " (du)" : "")));
+      b.appendChild(el("span", "rscore", String(r.t)));
+      if (selectable) {
+        b.setAttribute("aria-pressed", selPid === r.p.pid ? "true" : "false");
+        b.addEventListener("click", function () { selPid = r.p.pid; render(); });
+      } else { b.disabled = true; b.style.cursor = "default"; b.style.opacity = "1"; }
+      li.appendChild(b); ol.appendChild(li);
+    });
+  }
+  function chipsFor(a, q) {
+    var chips = el("div", "chips");
+    if (a.hits && q) a.hits.forEach(function (h, i) { chips.appendChild(el("span", "chip " + (h ? "hit" : "miss"), q.clubs[i])); });
+    else (a.clubs || []).forEach(function (c) { chips.appendChild(el("span", "chip" + (a.club && c === a.club ? " hit" : ""), c)); });
+    return chips;
+  }
+  function answerCard(p, a, q) {
+    var li = el("li", "pick"), head = el("div", "pick-head");
+    head.appendChild(el("span", "pick-name", p.name + (p.pid === me.pid ? " (du)" : "") + ": " + a.name));
+    head.appendChild(el("span", "pick-pts", a.id == null ? "0 poäng" : (S.game === "tre-klubbar" ? poang(a.pts) : a.pts + " lag")));
+    li.appendChild(head); li.appendChild(chipsFor(a, q)); return li;
+  }
+
+  function waitText(base) {
+    var w = S.players.filter(function (p) { return p.on && !S.ready[p.pid]; }).map(function (p) { return p.name; });
+    return w.length ? "Väntar på: " + w.join(", ") + "." : base;
+  }
+  function render() {
+    if (!S) return;
+    var ph = S.phase;
+    ["lobby", "intro", "q", "reveal", "final"].forEach(function (k) { $("ol-" + k).hidden = k !== ph; });
+
+    if (ph === "lobby") {
+      $("ol-codeShow").textContent = S.code;
+      var ul = $("ol-players"); clear(ul);
+      S.players.forEach(function (p) {
+        var li = el("li", "pick"), h = el("div", "pick-head");
+        h.appendChild(el("span", "pick-name", p.name + (p.pid === me.pid ? " (du)" : "")));
+        h.appendChild(el("span", "tag" + (S.ready[p.pid] ? " ok" : ""), S.ready[p.pid] ? "Redo" : "Väntar"));
+        li.appendChild(h); ul.appendChild(li);
+      });
+      $("ol-count").textContent = S.players.length + " av " + MAXP + " spelare";
+      var enough = S.players.length >= MINP;
+      $("ol-ready").disabled = myReady();
+      $("ol-ready").textContent = myReady() ? "Redo \u2713" : "Redo";
+      $("ol-wait").textContent = !enough ? "Väntar på fler spelare. Minst " + MINP + " behövs." : waitText("Spelet startar när alla är redo.");
+      lastQ = -1; answeredQ = -1; pendingAns = null; selPid = null;
+    }
+
+    if (ph === "intro") {
+      $("ol-introText").textContent = "Fråga " + (S.qi + 1) + " av " + Q;
+      selPid = null;
+    }
+
+    if (ph === "q") {
+      var q = S.questions[S.qi];
+      $("ol-roundLabel").textContent = "Fråga " + (S.qi + 1) + " av " + Q;
+      clubCards($("ol-clubs"), q);
+      var who = $("ol-who"); clear(who);
+      S.players.forEach(function (p) { who.appendChild(el("span", "chip" + (S.answered[p.pid] ? " hit" : ""), p.name + (S.answered[p.pid] ? " ✓" : (p.on ? " …" : " (frånkopplad)")))); });
+      if (S.qi !== lastQ) { lastQ = S.qi; answeredQ = -1; pendingAns = null; $("ol-player").value = ""; setMsg("", ""); $("ol-player").disabled = false; $("ol-go").disabled = false; if (!$("ol-room").hidden) $("ol-player").focus(); }
+      tick();
+    }
+
+    if (ph === "reveal") {
+      var rq = S.questions[S.qi];
+      $("ol-revealLabel").textContent = "Fråga " + (S.qi + 1) + " av " + Q + " · svar";
+      clubCards($("ol-revealClubs"), rq);
+      var al = $("ol-answers"); clear(al);
+      S.players.forEach(function (p) { var a = (S.hist[p.pid] || [])[S.qi]; if (a) al.appendChild(answerCard(p, a, rq)); });
+      boardRows($("ol-standings"), ranking(), false);
+      var last = S.qi + 1 >= Q;
+      $("ol-next").disabled = myReady();
+      $("ol-next").textContent = myReady() ? "Redo \u2713" : (last ? "Redo för resultat" : "Redo för nästa fråga");
+      $("ol-revealWait").textContent = waitText(last ? "Resultatet visas när alla är redo." : "Nästa fråga kommer när alla är redo.");
+    }
+
+    if (ph === "final") {
+      var rows = ranking(), top = rows[0].t, winners = rows.filter(function (r) { return r.t === top; });
+      if (winners.length === 1) { $("ol-winner").textContent = winners[0].p.name + " vinner"; $("ol-winnerNote").textContent = top + " poäng."; }
+      else { $("ol-winner").textContent = "Delad seger"; $("ol-winnerNote").textContent = winners.map(function (w) { return w.p.name; }).join(", ") + " har " + top + " poäng vardera."; }
+      if (!selPid || !S.players.some(function (p) { return p.pid === selPid; })) selPid = winners[0].p.pid;
+      boardRows($("ol-leaderboard"), rows, true);
+      var pk = $("ol-picks"); clear(pk);
+      var sp = S.players.filter(function (p) { return p.pid === selPid; })[0];
+      (S.hist[selPid] || []).forEach(function (a, i) { pk.appendChild(answerCard(sp, a, S.questions[i])); });
+      $("ol-again").disabled = myReady();
+      $("ol-again").textContent = myReady() ? "Redo \u2713" : "Redo för ny omgång";
+      $("ol-finalWait").textContent = waitText("Ny omgång startar när alla är redo.");
+    }
+  }
+
+  /* ---------- Lämna, kopiera, uppstart ---------- */
+  function leave() {
+    [hbTimer, hostTimer, tickTimer].forEach(function (t) { if (t) clearInterval(t); });
+    [hostGoneTimer, joinTimer].forEach(function (t) { if (t) clearTimeout(t); });
+    hbTimer = hostTimer = tickTimer = hostGoneTimer = joinTimer = null;
+    if (net) { try { net.leave(); } catch (e) { /* ignore */ } }
+    net = null; S = null; isHost = false; joined = false; presence = []; cur = {}; mine = []; usedPrior = []; lastQ = -1; answeredQ = -1; pendingAns = null; helloSent = false; starting = false; localReady = "";
+    showMenu();
+  }
+  function copy(text, label) {
+    var done = function () { menuMsg("", ""); var b = $("ol-copyCode"); void b; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { window.prompt && void 0; });
+    var w = $("ol-wait"); var old = w.textContent; w.textContent = label + ": " + text; setTimeout(function () { if (S && S.phase === "lobby") render(); else w.textContent = old; }, 2500);
+  }
+  function configure() {
+    var g = GAMES[gameKey];
+    $("ol-title").textContent = g.title; $("ol-lede").textContent = g.lede; $("ol-offline").setAttribute("href", g.offline);
+    var off = !AVAILABLE;
+    $("ol-notice").hidden = !off;
+    $("ol-notice").textContent = "Onlineläget är inte aktiverat här. Det kräver att sidan är publicerad med en Supabase-konfiguration (se README).";
+    $("ol-create").disabled = off; $("ol-join").disabled = off;
+    try { if (!$("ol-name").value) $("ol-name").value = localStorage.getItem("fs-name") || ""; } catch (e) { /* ignore */ }
+    try { var j = new URLSearchParams(location.search).get("join"); if (j && !$("ol-code").value) $("ol-code").value = j.toUpperCase().slice(0, 5); } catch (e) { /* ignore */ }
+  }
+
+  $("ol-create").addEventListener("click", createMatch);
+  $("ol-join").addEventListener("click", joinMatch);
+  $("ol-code").addEventListener("keydown", function (e) { if (e.key === "Enter") joinMatch(); });
+  $("ol-ready").addEventListener("click", sendReady);
+  $("ol-next").addEventListener("click", sendReady);
+  $("ol-again").addEventListener("click", sendReady);
+  $("ol-leave").addEventListener("click", leave);
+  $("ol-form").addEventListener("submit", function (e) { e.preventDefault(); submit($("ol-player").value.trim()); });
+  $("ol-copyCode").addEventListener("click", function () { if (S) copy(S.code, "Kod"); });
+  $("ol-copyLink").addEventListener("click", function () {
+    if (!S) return;
+    var url = location.origin + location.pathname + "?join=" + S.code + "#online-" + gameKey;
+    copy(url, "Länk");
+  });
+  window.addEventListener("fs-route", function (e) {
+    var n = (e.detail && e.detail.name) || "";
+    if (n.indexOf("online-") === 0 && GAMES[n.slice(7)]) {
+      var g = n.slice(7);
+      if (net && gameKey !== g) leave();
+      gameKey = g; configure();
+    } else if (net) leave();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".online-row"), function (r) { r.hidden = !AVAILABLE; });
+})();
+</script>
+
+<script>
+(function () {
+  // Enkel hash-router: #femmanalaget visar spelet, allt annat visar startsidan.
+  // Nytt spel: lägg till ett kort i #home och en vy med id "view-<namn>".
+  var views = ["femmanalaget", "tre-klubbar", "online"];
+  function route() {
+    var name = location.hash.replace(/^#/, "");
+    var view = /^online-(femmanalaget|tre-klubbar)$/.test(name) ? "online" : name;
+    var active = views.indexOf(view) >= 0 ? view : null;
+    document.getElementById("home").hidden = !!active;
+    views.forEach(function (v) { document.getElementById("view-" + v).hidden = v !== active; });
+    window.dispatchEvent(new CustomEvent("fs-route", { detail: { name: name } }));
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
+</body>
+</html>
