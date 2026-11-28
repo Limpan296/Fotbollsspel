@@ -417,6 +417,11 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       </div>
       <div class="eyebrow" id="ol-count"></div>
       <ul class="picks" id="ol-players"></ul>
+      <div class="stack" id="ol-level" hidden>
+        <div class="eyebrow">Svårighetsgrad</div>
+        <div class="row" id="ol-levelBtns"></div>
+        <p class="hint" id="ol-levelHint"></p>
+      </div>
       <p class="hint" id="ol-wait"></p>
       <div class="row"><button type="button" id="ol-ready">Redo</button></div>
     </div>
@@ -1238,6 +1243,12 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   var SUPA_SRC = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
   var MINP = 2, MAXP = 8, Q = 5, INTRO_MS = 2500, QMS = CFG.questionMs || 30000;
   var VAJ = "vem-ar-jag", CLUE_MS = CFG.clueMs || 20000;
+  var LEVELS = {   // svårighetsgrad -> vilka frågenivåer (1 = mycket kända, 2 = kända, 3 = svårare) som slumpas fram
+    latt:    { label: "Lätt",    hint: "Bara riktigt kända spelare.",                   tiers: [1, 1, 1, 1, 1] },
+    medel:   { label: "Medel",   hint: "Mest kända spelare, några svårare.",            tiers: [1, 2, 2, 2, 2] },
+    svar:    { label: "Svår",    hint: "Också spelare som bara fotbollsnördar känner.", tiers: [2, 3, 3, 3, 3] },
+    blandad: { label: "Blandad", hint: "En mix av lätta, medelsvåra och svåra.",        tiers: [1, 2, 2, 3, 2] }
+  };
   var ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   var GAMES = {
     "femmanalaget": { title: "Femmanalaget online", offline: "#femmanalaget",
@@ -1366,7 +1377,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
   function initHost(code) {
     isHost = true; joined = true; offset = 0; cur = {};
-    S = { game: gameKey, code: code, round: 1, phase: "lobby", players: [], qi: 0, questions: [], deadline: 0, answered: {}, hist: {}, totals: {}, ready: {}, introUntil: 0, ci: 0, clues: [], clueEnd: 0, guessed: {}, solved: {}, reveals: [], note: "" };
+    S = { game: gameKey, code: code, round: 1, phase: "lobby", players: [], qi: 0, questions: [], deadline: 0, answered: {}, hist: {}, totals: {}, ready: {}, introUntil: 0, ci: 0, clues: [], clueEnd: 0, guessed: {}, solved: {}, reveals: [], note: "", level: "latt" };
     myRound = 1; mine = []; usedPrior = [];
     hbTimer = setInterval(function () { if (isHost && net) net.send({ t: "state", s: S, now: Date.now() }); }, 3000);
     hostTimer = setInterval(hostTick, 250);
@@ -1455,13 +1466,13 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     var recent = [];
     try { recent = JSON.parse(localStorage.getItem("vem-ar-jag-recent") || "[]"); } catch (e) { recent = []; }
     var used = {}, out = [];
-    [1, 2, 2, 3, 2].forEach(function (d) {   // blandad svårighet
+    (LEVELS[S.level] || LEVELS.latt).tiers.forEach(function (d) {   // svårighetsgradens frågenivåer
       var c = vajPool.filter(function (q) { return q.d === d && !used[q.id] && recent.indexOf(q.id) < 0; });
       if (!c.length) c = vajPool.filter(function (q) { return q.d === d && !used[q.id]; });
       if (!c.length) c = vajPool.filter(function (q) { return !used[q.id]; });
       var q = c[Math.floor(Math.random() * c.length)]; used[q.id] = 1; out.push(q);
     });
-    try { localStorage.setItem("vem-ar-jag-recent", JSON.stringify(out.map(function (q) { return q.id; }).concat(recent).slice(0, 150))); } catch (e) { /* ignore */ }
+    try { localStorage.setItem("vem-ar-jag-recent", JSON.stringify(out.map(function (q) { return q.id; }).concat(recent).slice(0, 60))); } catch (e) { /* ignore */ }
     return out;
   }
   function piOf(id) {
@@ -1734,6 +1745,21 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     chips.appendChild(el("span", "chip" + (a.pts ? " hit" : ""), a.pts ? "Rätt på ledtråd " + (a.clue + 1) : "Ingen rätt"));
     li.appendChild(head); li.appendChild(chips); return li;
   }
+  function renderLevel(parent, before) {
+    var box = $("ol-level"), show = isVaj() && (S.phase === "lobby" || S.phase === "final");
+    box.hidden = !show;
+    if (!show) return;
+    parent.insertBefore(box, before);
+    var row = $("ol-levelBtns"); clear(row);
+    Object.keys(LEVELS).forEach(function (k) {
+      var b = el("button", S.level === k ? "" : "ghost", LEVELS[k].label);
+      b.type = "button"; b.setAttribute("aria-pressed", S.level === k ? "true" : "false");
+      b.disabled = !isHost;
+      b.addEventListener("click", function () { if (isHost && (S.phase === "lobby" || S.phase === "final")) { S.level = k; broadcast(); } });
+      row.appendChild(b);
+    });
+    $("ol-levelHint").textContent = (LEVELS[S.level] || LEVELS.latt).hint + (isHost ? "" : " Värden väljer.");
+  }
   function renderClues() {
     var box = $("ol-clues"); clear(box);
     for (var i = 0; i < 5; i++) {
@@ -1771,6 +1797,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       $("ol-ready").textContent = myReady() ? "Redo \u2713" : "Redo";
       $("ol-wait").textContent = !enough ? "Väntar på fler spelare. Minst " + MINP + " behövs." : waitText("Spelet startar när alla är redo.");
       lastQ = -1; answeredQ = -1; pendingAns = null; selPid = null; vSent = null; vFb = null;
+      renderLevel($("ol-lobby"), $("ol-wait"));
     }
 
     if (ph === "intro") {
@@ -1835,6 +1862,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       $("ol-again").disabled = myReady();
       $("ol-again").textContent = myReady() ? "Redo \u2713" : "Redo för ny omgång";
       $("ol-finalWait").textContent = waitText("Ny omgång startar när alla är redo.");
+      renderLevel($("ol-final"), $("ol-finalWait"));
     }
   }
 
