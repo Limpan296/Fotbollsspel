@@ -201,7 +201,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         <h2>Vem är jag?</h2>
         <p>Gissa vilken fotbollsspelare det är utifrån fem ledtrådar. Ju tidigare du svarar rätt, desto fler poäng.</p>
       </div>
-      <div class="game-meta"><span class="eyebrow">2–8 spelare online · 5 ledtrådar</span><span class="game-go">Spela &rarr;</span></div>
+      <div class="game-meta"><span class="eyebrow">1–8 spelare · 5 ledtrådar</span><span class="game-go">Spela &rarr;</span></div>
     </a>
     <div class="game-card soon">
       <h2>Fler spel kommer</h2>
@@ -394,6 +394,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
       <label for="ol-name">Ditt namn</label>
       <div class="row"><input type="text" id="ol-name" name="ol-name" maxlength="20" placeholder="Ditt namn" autocomplete="off"></div>
     </div>
+    <div class="row" id="ol-soloRow" hidden><button type="button" id="ol-solo">Spela själv</button></div>
     <div class="row"><button type="button" id="ol-create">Skapa match</button></div>
     <div class="stack">
       <label for="ol-code">Eller gå med i en match</label>
@@ -409,11 +410,13 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
   <section class="panel narrow" id="ol-room" aria-live="polite" hidden>
     <div id="ol-lobby" class="stack" hidden>
-      <div class="eyebrow">Matchkod</div>
-      <p class="code" id="ol-codeShow"></p>
-      <div class="row">
-        <button type="button" class="ghost" id="ol-copyCode">Kopiera kod</button>
-        <button type="button" class="ghost" id="ol-copyLink">Kopiera länk</button>
+      <div class="stack" id="ol-invite">
+        <div class="eyebrow">Matchkod</div>
+        <p class="code" id="ol-codeShow"></p>
+        <div class="row">
+          <button type="button" class="ghost" id="ol-copyCode">Kopiera kod</button>
+          <button type="button" class="ghost" id="ol-copyLink">Kopiera länk</button>
+        </div>
       </div>
       <div class="eyebrow" id="ol-count"></div>
       <ul class="picks" id="ol-players"></ul>
@@ -1241,7 +1244,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   var $ = function (id) { return document.getElementById(id); };
   var AVAILABLE = !!(CFG.mock || (CFG.supabaseUrl && CFG.supabaseKey));
   var SUPA_SRC = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
-  var MINP = 2, MAXP = 8, Q = 5, INTRO_MS = 2500, QMS = CFG.questionMs || 30000;
+  var solo = false, MINP = 2, MAXP = 8, Q = 5, INTRO_MS = 2500, QMS = CFG.questionMs || 30000;
   var VAJ = "vem-ar-jag", CLUE_MS = CFG.clueMs || 20000;
   var LEVELS = {   // svårighetsgrad -> vilka frågenivåer (1 = mycket kända, 2 = kända, 3 = svårare) som slumpas fram
     latt:    { label: "Lätt",    hint: "Bara riktigt kända spelare.",                   tiers: [1, 1, 1, 1, 1] },
@@ -1256,7 +1259,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     "tre-klubbar": { title: "Tre klubbar online", offline: "#tre-klubbar",
       lede: "Alla får samma tre klubbar samtidigt. Skriv en spelare och få ett poäng för varje klubb han har spelat i. Efter varje fråga ser ni allas svar." },
     "vem-ar-jag": { title: "Vem är jag?", offline: null,
-      lede: "Läs ledtrådarna och gissa vilken fotbollsspelare det är. Rätt svar på första ledtråden ger 10 poäng, sedan 8, 6, 4 och 2. Alla ser samma ledtråd samtidigt och en ny kommer var " + Math.round(CLUE_MS / 1000) + ":e sekund. Du kan svara en gång per ledtråd." }
+      lede: "Läs ledtrådarna och gissa vilken fotbollsspelare det är. Rätt svar på första ledtråden ger 10 poäng, sedan 8, 6, 4 och 2. Alla ser samma ledtråd samtidigt och en ny kommer var " + Math.round(CLUE_MS / 1000) + ":e sekund. Du kan svara en gång per ledtråd. Du kan spela själv eller skapa en onlinematch med upp till 8 spelare." }
   };
 
   var gameKey = null, net = null, isHost = false, joined = false, S = null, cur = {}, offset = 0, presence = [];
@@ -1264,7 +1267,8 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   var starting = false, localReady = "", lastReadyResend = 0;
   var vajPool = null, vajQs = [], vg = {}, vSent = null, vFb = null, lastGuessSend = 0, idIndex = null;
   function isVaj() { return gameKey === VAJ; }
-  if (CFG.mock) window.__vajQs = function () { return vajQs; };   // bara för automatiska tester
+  function minPlayers() { return solo ? 1 : MINP; }
+  if (CFG.mock || CFG.testHook) window.__vajQs = function () { return vajQs; };   // bara för automatiska tester
   var hbTimer = null, hostTimer = null, tickTimer = null, hostGoneTimer = null, joinTimer = null, helloSent = false, lastResend = 0;
 
   function rnd(n) { var s = ""; for (var i = 0; i < n; i++) s += ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length)); return s; }
@@ -1375,6 +1379,14 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   function lockMenu(on) { $("ol-create").disabled = on; $("ol-join").disabled = on; }
   function fail(msg) { leave(); menuMsg(msg, "err"); }
 
+  function startSolo() {
+    if (!isVaj()) return;
+    if (!readName()) $("ol-name").value = "Du";
+    saveName(readName());
+    solo = true; presence = []; helloSent = false;
+    net = { send: function () { /* ingen nätverkstrafik när man spelar själv */ }, leave: function () { /* inget att stänga */ } };
+    initHost("SOLO");
+  }
   function initHost(code) {
     isHost = true; joined = true; offset = 0; cur = {};
     S = { game: gameKey, code: code, round: 1, phase: "lobby", players: [], qi: 0, questions: [], deadline: 0, answered: {}, hist: {}, totals: {}, ready: {}, introUntil: 0, ci: 0, clues: [], clueEnd: 0, guessed: {}, solved: {}, reveals: [], note: "", level: "latt" };
@@ -1417,7 +1429,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   function phaseKey() { return S.phase + ":" + S.round + ":" + S.qi; }
   function readyAll() {
     var on = S.players.filter(function (p) { return p.on; });
-    var need = S.phase === "reveal" ? 1 : MINP;
+    var need = S.phase === "reveal" ? 1 : minPlayers();
     return on.length >= need && on.every(function (p) { return S.ready[p.pid]; });
   }
   function hostReady(pid, key) {
@@ -1779,6 +1791,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
   }
   function render() {
     if (!S) return;
+    $("ol-leave").textContent = solo ? "Avsluta" : "Lämna matchen";
     var ph = S.phase;
     ["lobby", "intro", "q", "reveal", "final"].forEach(function (k) { $("ol-" + k).hidden = k !== ph; });
 
@@ -1792,10 +1805,11 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         li.appendChild(h); ul.appendChild(li);
       });
       $("ol-count").textContent = S.players.length + " av " + MAXP + " spelare";
-      var enough = S.players.length >= MINP;
+      var enough = S.players.length >= minPlayers();
+      $("ol-invite").hidden = solo; $("ol-count").hidden = solo;
       $("ol-ready").disabled = myReady();
       $("ol-ready").textContent = myReady() ? "Redo \u2713" : "Redo";
-      $("ol-wait").textContent = !enough ? "Väntar på fler spelare. Minst " + MINP + " behövs." : waitText("Spelet startar när alla är redo.");
+      $("ol-wait").textContent = !enough ? "Väntar på fler spelare. Minst " + minPlayers() + " behövs." : waitText("Spelet startar när alla är redo.");
       lastQ = -1; answeredQ = -1; pendingAns = null; selPid = null; vSent = null; vFb = null;
       renderLevel($("ol-lobby"), $("ol-wait"));
     }
@@ -1852,7 +1866,8 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 
     if (ph === "final") {
       var rows = ranking(), top = rows[0].t, winners = rows.filter(function (r) { return r.t === top; });
-      if (winners.length === 1) { $("ol-winner").textContent = winners[0].p.name + " vinner"; $("ol-winnerNote").textContent = top + " poäng."; }
+      if (solo) { $("ol-winner").textContent = top + " poäng"; $("ol-winnerNote").textContent = "Du fick " + top + " av 50 möjliga poäng."; }
+      else if (winners.length === 1) { $("ol-winner").textContent = winners[0].p.name + " vinner"; $("ol-winnerNote").textContent = top + " poäng."; }
       else { $("ol-winner").textContent = "Delad seger"; $("ol-winnerNote").textContent = winners.map(function (w) { return w.p.name; }).join(", ") + " har " + top + " poäng vardera."; }
       if (!selPid || !S.players.some(function (p) { return p.pid === selPid; })) selPid = winners[0].p.pid;
       boardRows($("ol-leaderboard"), rows, true);
@@ -1872,7 +1887,7 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     [hostGoneTimer, joinTimer].forEach(function (t) { if (t) clearTimeout(t); });
     hbTimer = hostTimer = tickTimer = hostGoneTimer = joinTimer = null;
     if (net) { try { net.leave(); } catch (e) { /* ignore */ } }
-    net = null; S = null; isHost = false; joined = false; presence = []; cur = {}; mine = []; usedPrior = []; lastQ = -1; answeredQ = -1; pendingAns = null; helloSent = false; starting = false; localReady = ""; vSent = null; vFb = null; vg = {}; vajQs = [];
+    net = null; solo = false; S = null; isHost = false; joined = false; presence = []; cur = {}; mine = []; usedPrior = []; lastQ = -1; answeredQ = -1; pendingAns = null; helloSent = false; starting = false; localReady = ""; vSent = null; vFb = null; vg = {}; vajQs = [];
     showMenu();
   }
   function copy(text, label) {
@@ -1887,12 +1902,14 @@ a.game-card:hover { border-color: var(--accent); transform: translateY(-2px); }
     $("ol-offline").parentNode.hidden = !g.offline; if (g.offline) $("ol-offline").setAttribute("href", g.offline);
     var off = !AVAILABLE;
     $("ol-notice").hidden = !off;
-    $("ol-notice").textContent = "Onlineläget är inte aktiverat här. Det kräver att sidan är publicerad med en Supabase-konfiguration (se README).";
+    $("ol-notice").textContent = "Onlineläget är inte aktiverat här. Det kräver att sidan är publicerad med en Supabase-konfiguration (se README)." + (gameKey === VAJ ? " Du kan ändå spela själv." : "");
+    $("ol-soloRow").hidden = gameKey !== VAJ;
     $("ol-create").disabled = off; $("ol-join").disabled = off;
     try { if (!$("ol-name").value) $("ol-name").value = localStorage.getItem("fs-name") || ""; } catch (e) { /* ignore */ }
     try { var j = new URLSearchParams(location.search).get("join"); if (j && !$("ol-code").value) $("ol-code").value = j.toUpperCase().slice(0, 5); } catch (e) { /* ignore */ }
   }
 
+  $("ol-solo").addEventListener("click", startSolo);
   $("ol-create").addEventListener("click", createMatch);
   $("ol-join").addEventListener("click", joinMatch);
   $("ol-code").addEventListener("keydown", function (e) { if (e.key === "Enter") joinMatch(); });
